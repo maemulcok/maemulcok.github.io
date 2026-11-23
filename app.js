@@ -607,6 +607,14 @@ function buildBoard() {
     s.className = 'tchip';
     s.style.background = c.bg; s.style.borderColor = c.bd; s.style.color = c.fg;
     s.textContent = CX.id === 'ipark' ? t + '평' : t;
+    /* 칩을 누르면 그 타입만 강조(필터). 다시 누르면 해제 */
+    s.dataset.t = t;
+    s.title = s.textContent + '만 강조 — 다시 누르면 해제';
+    s.onclick = function () {
+      var cur = $('sel-type').value;
+      $('sel-type').value = (cur === t) ? '' : t;
+      applyFilters();
+    };
     tl.appendChild(s);
   });
 
@@ -720,6 +728,10 @@ function applyFilters() {
     var ok = isMatch(td, stateOf(k), f);
     td.classList.toggle('dim', !ok);
     td.classList.toggle('hit', searching && ok);
+  });
+  /* 범례 칩에도 지금 고른 타입 표시를 맞춰 준다 */
+  document.querySelectorAll('#tlegend .tchip').forEach(function (c) {
+    c.classList.toggle('on', !!f.ty && c.dataset.t === f.ty);
   });
   updateCounts();
 }

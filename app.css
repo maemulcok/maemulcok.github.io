@@ -272,7 +272,10 @@ select{border:1px solid #dfe3e8; border-radius:7px; padding:4px 5px; font-size:1
 .sw{width:11px; height:11px; border-radius:3px; border:1px solid #cbd5e1; display:inline-block}
 .tl{display:inline-flex; align-items:center; gap:3px; flex-wrap:wrap}
 .tchip{display:inline-flex; align-items:center; justify-content:center; min-width:27px; height:15px; padding:0 3px;
-       border-radius:4px; font-size:9px; font-weight:800; letter-spacing:-.3px; border:1px solid rgba(15,23,42,.12)}
+       border-radius:4px; font-size:9px; font-weight:800; letter-spacing:-.3px; border:1px solid rgba(15,23,42,.12);
+       cursor:pointer}
+.tchip:hover{filter:brightness(.97)}
+.tchip.on{outline:2px solid #2563eb; outline-offset:1px}
 
 /* 동 바로가기 (좁은 화면에서만 보임) */
 .tabs{display:none; gap:0; padding:0 4px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
