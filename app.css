@@ -320,12 +320,17 @@ td.c span.num{pointer-events:none}
 td.c .urg{font-style:normal; font-size:.82em; font-weight:700; letter-spacing:0; color:#DC2626; margin-left:1px}
 td.c.s-done .urg{color:#fff; background:#b91c1c; border-radius:2px; padding:0 1px}
 td.blank{border:0; background:transparent}
-th.fc.bz{border:0; border-bottom:1px solid var(--gl2); background:transparent; color:#a9b4bf}
+th.fc.bz{border:0; border-bottom:1px solid transparent; background:transparent; color:transparent}
 td.evac{background:#f5f8fb; color:#334155; font-size:var(--fx); font-weight:700; letter-spacing:-.5px}
 td.fx{background:#fcfdfd; color:#66788a; font-size:var(--fx); font-weight:700; letter-spacing:-.5px}
 td.fx.lobby{background:#fbfcfd; color:#8b98a6}
 td.fx.under{background:#fdf7f2; color:#8a6a4f}
 td.fx.salefloor{background:#fbfcfd; color:#4b5b6b}
+/* 호실이 없는 빈 칸(td.fx)·빈 층(td.blank, th.fc.bz)은 엑셀 격자선·배경·층 글자를 지워
+   건물 실루엣만 남긴다. border:none 은 border-collapse 충돌 규칙에서 이웃 호실 테두리에
+   밀리므로, 빈 칸과 맞닿은 실제 호실 테두리가 그대로 이어져 외곽선이 끊기지 않는다.
+   (tr.fz 행 높이는 그대로라 1·2·3동 바닥선 정렬은 유지된다) */
+td.fx:empty{border:0; background:transparent}
 tr.sum th{height:calc(var(--rh) + .5px); background:#f7f9fa; border:1px solid var(--gl); text-align:center;
           font-size:var(--fsum); font-weight:700; color:#5f6f7e; letter-spacing:-.5px; line-height:1}
 tr.sum td{height:calc(var(--rh) + .5px); border:1px solid var(--gl); text-align:center; font-size:var(--fsum);
