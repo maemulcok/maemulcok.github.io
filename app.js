@@ -26,6 +26,15 @@ var CX_LIST = [];
       price: false, dongs: [1, 2, 3]
     });
   }
+  if (window.ZENITH_BOARD) {
+    /* 동 id 201~203: 센텀르엘(101~106)·해운대아이파크(1~3)와 unit_key가 겹치지 않게 하는 내부 번호.
+       화면에는 board.dongs 의 name(101동~103동)으로 보인다. */
+    CX_LIST.push({
+      id: 'zenith', name: '해운대두산위브더제니스', sub: '101·102·103동 · 1,788세대',
+      desc: '마린시티 두산위브 더 제니스', board: window.ZENITH_BOARD, cols: 12, bottom: 3, fillBlanks: true,
+      price: false, dongs: [201, 202, 203]
+    });
+  }
   if (!CX_LIST.length) CX_LIST.push({ id: 'empty', name: '단지', sub: '', board: { units: [], area: {}, meta: {} }, cols: 6, bottom: 5, dongs: [] });
 })();
 var CX = CX_LIST[0];
@@ -51,6 +60,24 @@ var CENTUM_TYPE_COLOR = {
   '125D': { bg: '#B9D8A0', bd: '#97B183', fg: '#1F2937' },
   '154':  { bg: '#F3AA85', bd: '#C78B6D', fg: '#1F2937' },
   '244':  { bg: '#FFFFFF', bd: '#C9C9C9', fg: '#1F2937' }
+};
+/* 해운대두산위브더제니스 타입 색상 (네이버 부동산 동호수표 타입 색을 그대로 옮김) */
+var ZENITH_COLOR = {
+  '148AE':   { bg: '#A7E6B2', bd: '#86CF93', fg: '#1F2937' },
+  '148AE-1': { bg: '#8ED8A0', bd: '#6FBF83', fg: '#1F2937' },
+  '150AW':   { bg: '#7DD98B', bd: '#5FC271', fg: '#1F2937' },
+  '155B':    { bg: '#3DAA4F', bd: '#2E8A3E', fg: '#FFFFFF' },
+  '162C':    { bg: '#367840', bd: '#2A6333', fg: '#FFFFFF' },
+  '173D':    { bg: '#F9B5BA', bd: '#DE979D', fg: '#1F2937' },
+  '187E':    { bg: '#F47C86', bd: '#D6616B', fg: '#1F2937' },
+  '214FS':   { bg: '#F7BFE0', bd: '#DB9FC2', fg: '#1F2937' },
+  '230FN':   { bg: '#E773B7', bd: '#C9569A', fg: '#FFFFFF' },
+  '232G':    { bg: '#C2B1FF', bd: '#A492E6', fg: '#1F2937' },
+  '233I':    { bg: '#A892F8', bd: '#8B74E0', fg: '#FFFFFF' },
+  '247H':    { bg: '#8165EA', bd: '#6A4FD0', fg: '#FFFFFF' },
+  '300J':    { bg: '#B8B8E0', bd: '#9A9AC6', fg: '#1F2937' },
+  '306KN':   { bg: '#9595C6', bd: '#7A7AAB', fg: '#FFFFFF' },
+  '325KS':   { bg: '#5D5DA2', bd: '#4A4A85', fg: '#FFFFFF' }
 };
 var TYPE_COLOR = CENTUM_TYPE_COLOR;
 var ST_NAME = { none: '미확인', sale: '매매', jeonse: '전세', wolse: '월세', done: '보류·완료' };
@@ -89,6 +116,19 @@ function cleanState(s) {
   return (s === 'sale' || s === 'jeonse' || s === 'wolse' || s === 'done') ? s : 'none';
 }
 function K(d, h, f) { return d + '-' + h + '-' + f; }
+/* 동 이름: 센텀르엘·아이파크는 '101동'·'1동', 제니스는 내부 id 201~203을 '101동'으로 보인다 */
+var DONG_LABEL = {};
+function dongLabel(d) { return DONG_LABEL[d] || (d + '동'); }
+/* 타입 표기: 센텀르엘은 타입명(84·104A), 아이파크는 평형(36평), 제니스는 타입명(162C) */
+function typeKind() { return CX.id === 'ipark' ? '평형' : '타입'; }
+function chipLabel(t) { return CX.id === 'ipark' ? t + '평' : t; }
+function typeFull(t) { return CX.id === 'ipark' ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입'); }
+/* 타입 줄(칸)에는 좁은 칸에 맞는 짧은 이름: 제니스는 숫자를 빼고 영문 타입만(162C→C) */
+function rowTypeLabel(t) {
+  if (CX.id !== 'zenith') return t;
+  var m = String(t).match(/^[\d.]+(.+)$/);
+  return m ? m[1] : t;
+}
 function hoNum(f, h) { return String(f) + String(h).padStart(2, '0'); }
 function py(m) { return (m / 3.3058).toFixed(1); }
 function won(p) {
@@ -200,7 +240,7 @@ function dongMetaFor(cx) {
     return m;
   }
   (cx.board && cx.board.dongs ? cx.board.dongs : []).forEach(function (d) {
-    m[d.id] = { top: d.top, cols: d.cols || cx.cols, special: d.special || {} };
+    m[d.id] = { top: d.top, cols: d.cols || cx.cols, special: d.special || {}, name: d.name };
   });
   return m;
 }
@@ -213,18 +253,20 @@ function setComplex(cx) {
   DONGS = (cx.dongs || []).slice();
   BOTTOM = cx.bottom || 5;
   COLS = cx.cols || 6;
-  TYPE_COLOR = (cx.id === 'ipark') ? IPARK_COLOR : CENTUM_TYPE_COLOR;
+  TYPE_COLOR = (cx.id === 'ipark') ? IPARK_COLOR : (cx.id === 'zenith' ? ZENITH_COLOR : CENTUM_TYPE_COLOR);
   DONG_META = dongMetaFor(cx);
   TOP = {};
   DONGS.forEach(function (d) { TOP[d] = (DONG_META[d] && DONG_META[d].top) || 67; });
   if (cx.id === 'ipark') {
     F1_LABEL = { 1: '판매시설 및 주민공동시설', 2: '판매시설 및 주민공동시설', 3: '판매시설 및 주민공동시설' };
+  } else if (cx.id === 'zenith') {
+    F1_LABEL = { 201: '로비 · 판매시설', 202: '로비 · 판매시설', 203: '로비 · 판매시설' };
   }
   buildIndex();
   UNIT_FLOORS = (function () { var m = 0, a = []; DONGS.forEach(function (d) { m = Math.max(m, TOP[d]); }); for (var f = m; f >= BOTTOM; f--) a.push(f); return a; })();
   built = false;
   cellMap.clear();
-  if (boardEl) boardEl.innerHTML = '';
+  if (boardEl) { boardEl.innerHTML = ''; boardEl.dataset.cx = cx.id; }
 }
 
 function buildIndex() {
@@ -505,7 +547,7 @@ function buildDong(d) {
   box.id = 'd' + d;
 
   var html = '<table class="grid"><colgroup><col class="fc">' + '<col>'.repeat(cols) + '</colgroup>';
-  html += '<thead><tr><th class="dh" colspan="' + (cols + 1) + '">' + d + '동'
+  html += '<thead><tr><th class="dh" colspan="' + (cols + 1) + '">' + dongLabel(d)
         + '<span class="ds">' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '세대</span></th></tr></thead><tbody>';
 
   var maxTop = 0;
@@ -532,7 +574,7 @@ function buildDong(d) {
            상태 색(매매·전세·월세·보류)과 급매 테두리는 paintCell 이 붙이는 클래스로만 칠한다. */
         tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, h, f) + '" data-d="' + d
             + '" data-ho="' + h + '" data-f="' + f + '" data-t="' + u.t + '"'
-            + ' aria-label="' + d + '동 ' + ho + '호 ' + u.t + '타입"><span class="num">' + ho + '</span></td>';
+            + ' aria-label="' + dongLabel(d) + ' ' + ho + '호 ' + u.t + '타입"><span class="num">' + ho + '</span></td>';
         if (span === 2) h++;
       } else {
         tr += '<td class="fx"></td>';
@@ -545,6 +587,9 @@ function buildDong(d) {
   if (CX.id === 'ipark') {
     html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 및 주민공동시설</td></tr>';
     html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 및 주민공동시설</td></tr>';
+  } else if (CX.id === 'zenith') {
+    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 · 공용부</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">' + (F1_LABEL[d] || '로비 · 판매시설') + '</td></tr>';
   } else {
     html += '<tr><th class="fc">4층</th><td class="fx">필로티</td><td class="fx">필로티</td><td class="fx">필로티</td>'
           + '<td class="fx lobby" colspan="2">로비</td><td class="fx">필로티</td></tr>';
@@ -553,7 +598,7 @@ function buildDong(d) {
     html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">' + (F1_LABEL[d] || '판매시설') + '</td></tr>';
   }
 
-  html += '<tr class="sum dongrow"><th>동</th><td colspan="' + cols + '">' + d + '동'
+  html += '<tr class="sum dongrow"><th>동</th><td colspan="' + cols + '">' + dongLabel(d)
         + '<span class="sub">(' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '세대)</span></td></tr>';
 
   html += '<tr class="sum typerow"><th>타입</th>';
@@ -564,16 +609,16 @@ function buildDong(d) {
       html += '<td>' + badge + '</td>';
     } else if (!info.split) {
       var c = TYPE_COLOR[info.t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
-      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + d + '동 ' + j + '호 라인 · ' + info.t + '타입">'
-            + info.t + badge + '</td>';
+      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + dongLabel(d) + ' ' + j + '호 라인 · ' + info.t + '타입">'
+            + rowTypeLabel(info.t) + badge + '</td>';
     } else {
       /* 같은 라인에 평형이 섞여 있으면 대각선으로 나눠 좌=저층 평형, 우=고층 평형 */
       var cl = TYPE_COLOR[info.low] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
       var ch = TYPE_COLOR[info.high] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
       html += '<td class="tsplit" style="background:linear-gradient(135deg,' + cl.bg + ' 49%,#ffffff 49.5%,#ffffff 50.5%,' + ch.bg + ' 51%);border-color:' + cl.bd + ';color:#1F2937"'
-            + ' title="' + d + '동 ' + j + '호 라인 · 저층 ' + info.low + ' · 고층 ' + info.high
+            + ' title="' + dongLabel(d) + ' ' + j + '호 라인 · 저층 ' + info.low + ' · 고층 ' + info.high
             + (info.more ? ' (사이 ' + info.more + ')' : '') + '">'
-            + info.low + '/' + info.high + badge + '</td>';
+            + rowTypeLabel(info.low) + '/' + rowTypeLabel(info.high) + badge + '</td>';
     }
   }
   html += '</tr>';
@@ -606,7 +651,7 @@ function buildBoard() {
     var s = document.createElement('span');
     s.className = 'tchip';
     s.style.background = c.bg; s.style.borderColor = c.bd; s.style.color = c.fg;
-    s.textContent = CX.id === 'ipark' ? t + '평' : t;
+    s.textContent = chipLabel(t);
     /* 칩을 누르면 그 타입만 강조(필터). 다시 누르면 해제 */
     s.dataset.t = t;
     s.title = s.textContent + '만 강조 — 다시 누르면 해제';
@@ -622,13 +667,13 @@ function buildBoard() {
   selT.length = 1;
   types.forEach(function (t) {
     var o = document.createElement('option'); o.value = t;
-    o.textContent = CX.id === 'ipark' ? t + '평형' : t + '타입';
+    o.textContent = typeFull(t);
     selT.appendChild(o);
   });
   var selD = $('sel-dong');
   selD.length = 1;
   DONGS.forEach(function (d) {
-    var o = document.createElement('option'); o.value = d; o.textContent = d + '동'; selD.appendChild(o);
+    var o = document.createElement('option'); o.value = d; o.textContent = dongLabel(d); selD.appendChild(o);
   });
 
   var tabs = $('tabs');
@@ -636,7 +681,7 @@ function buildBoard() {
   DONGS.forEach(function (d) {
     var b = document.createElement('button');
     b.dataset.d = d;
-    b.innerHTML = d + '동<span class="n">' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '</span>';
+    b.innerHTML = dongLabel(d) + '<span class="n">' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '</span>';
     b.onclick = function () { jumpTo(d); };
     tabs.appendChild(b);
   });
@@ -715,7 +760,7 @@ function isMatch(td, st, f) {
   if (f.st === 'memo' && !hasInfo(td.dataset.k)) return false;
   if (f.q) {
     var k = td.dataset.k;
-    var hay = norm(td.dataset.d + '동' + td.dataset.ho + '호' + td.dataset.f + '층'
+    var hay = norm(dongLabel(td.dataset.d) + td.dataset.ho + '호' + td.dataset.f + '층'
                  + hoNum(td.dataset.f, td.dataset.ho) + ' ' + k + ' ' + ST_NAME[st] + ' '
                  + memoOf(k) + ' ' + fieldText(k) + (isUrgent(k) ? ' 급매' : ''));
     if (hay.indexOf(f.q) < 0) return false;
@@ -785,10 +830,10 @@ function showTip(td, x, y) {
   var d = td.dataset.d, h = td.dataset.ho, f = td.dataset.f, t = td.dataset.t, key = td.dataset.k;
   var u = IDX.get(key); if (!u) return;
   var st = stateOf(key), sup = unitSup(u), jeon = unitJeon(u);
-  var tname = CX.id === 'ipark' ? t + '평형' : t + '타입';
+  var tname = typeFull(t);
   var memo = memoOf(key).replace(/\n+/g, ' · ').replace(/\s+/g, ' ').trim();
   var ft = fieldText(key), urg = isUrgent(key);
-  tipEl.innerHTML = '<b>' + d + '동 ' + hoNum(f, h) + '호</b>' + (urg ? ' <em class="uu">(급)</em>' : '')
+  tipEl.innerHTML = '<b>' + dongLabel(d) + ' ' + hoNum(f, h) + '호</b>' + (urg ? ' <em class="uu">(급)</em>' : '')
     + ' · ' + tname + (CX.price ? ' · <i>' + won(u.p) + '</i>' : '')
     + '<span class="stx"><em style="background:' + ST_COLOR[st] + ';border:1px solid ' + ST_BORDER[st] + '"></em>' + ST_NAME[st] + '</span>'
     + (ft ? '<em class="fl">' + esc(ft) + '</em>' : '')
@@ -927,8 +972,8 @@ function openCard(td) {
   selectCell(td); hideTip();
 
   var sup = unitSup(u), jeon = unitJeon(u);
-  mcHo.textContent = u.d + '동 ' + hoNum(u.f, u.h) + '호';
-  mcType.textContent = CX.id === 'ipark' ? u.t + '평형' : u.t + '타입';
+  mcHo.textContent = dongLabel(u.d) + ' ' + hoNum(u.f, u.h) + '호';
+  mcType.textContent = typeFull(u.t);
   var c = TYPE_COLOR[u.t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
   mcType.style.background = c.bg; mcType.style.borderColor = c.bd; mcType.style.color = c.fg;
   if (CX.price) {
@@ -1143,7 +1188,7 @@ function computeFit() {
   var contentH = boardEl.getBoundingClientRect().height;
   if (!contentH || contentH < 50) return 1;
   var s = availH / contentH;
-  var needW = 138 * 6 + 5 * 6, availW = window.innerWidth - 24;
+  var needW = (CX.id === 'zenith' ? (COLS * 21 + 30) : 138) * DONGS.length + 5 * Math.max(0, DONGS.length - 1), availW = window.innerWidth - 24;
   if (needW > availW) s = Math.min(s, availW / needW);
   s = Math.floor(s * 1000) / 1000;
   return Math.max(0.45, Math.min(1.14, s));
@@ -1186,7 +1231,7 @@ window.addEventListener('resize', function () {
 });
 function setGuide() {
   var tap = (COARSE || isNarrow()) ? '한 번 탭' : '더블클릭';
-  var tail = isNarrow() ? '' : ' · 분양가 · 색상';
+  var tail = isNarrow() ? '' : (CX.price ? ' · 분양가 · 색상' : ' · 면적 · 색상');
   $('guide-sub').innerHTML = (LIVE ? '' : '데모 모드 · ') + '호실을 <b>' + tap + '</b>하면 메모장' + tail;
 }
 
@@ -1382,7 +1427,7 @@ function leaseSoon() {
 }
 function expClose() { if (expEl) expEl.classList.remove('on'); if (ov6) ov6.classList.remove('on'); }
 function expItem(it) {
-  var name = (it.cx ? it.cx.name + ' ' : '') + it.u.d + '동 ' + hoNum(it.u.f, it.u.h) + '호';
+  var name = (it.cx ? it.cx.name + ' ' : '') + dongLabel(it.u.d) + ' ' + hoNum(it.u.f, it.u.h) + '호';
   var dd = it.d === 0 ? 'D-DAY' : 'D-' + it.d;
   var cs = [];
   if (str(it.n.owner)) cs.push('임대인 <b>' + esc(it.n.owner) + '</b>' + (str(it.n.phone) ? ' ' + esc(it.n.phone) : ''));
@@ -1880,9 +1925,14 @@ function siteUrl() {
    ============================================================ */
 var HOME_ON = false;
 var CXIDX = {};
-
 function buildCxIndexes() {
   CXIDX = {};
+  DONG_LABEL = {};
+  CX_LIST.forEach(function (cx) {
+    ((cx.board && cx.board.dongs) || []).forEach(function (d) {
+      DONG_LABEL[d.id] = d.name || (d.id + '동');
+    });
+  });
   CX_LIST.forEach(function (cx) {
     var m = new Map();
     ((cx.board && cx.board.units) || []).forEach(function (u) {
@@ -2027,7 +2077,7 @@ function renderHome() {
   $('home-exp-n').textContent = ex.length ? ex.length + '건' : '없음';
   $('home-exp').innerHTML = ex.length ? ex.map(function (it) {
     return '<button type="button" class="hexp" data-k="' + esc(it.k) + '" data-cx="' + it.cx.id + '">'
-      + '<span class="hx1"><b>' + esc(it.cx.name) + ' ' + it.u.d + '동 ' + hoNum(it.u.f, it.u.h) + '호</b>'
+      + '<span class="hx1"><b>' + esc(it.cx.name) + ' ' + dongLabel(it.u.d) + ' ' + hoNum(it.u.f, it.u.h) + '호</b>'
       + '<i class="htag ' + it.st + '">' + ST_NAME[it.st] + '</i>'
       + '<em class="hd' + (it.left <= 30 ? ' soon' : '') + '">' + (it.left === 0 ? 'D-DAY' : 'D-' + it.left) + '</em></span>'
       + '<span class="hx2">만기 ' + esc(String(it.n.end).slice(0, 10))
@@ -2067,10 +2117,13 @@ function renderHome() {
   /* ④ 단지 카드 */
   $('home-cards').innerHTML = CX_LIST.map(function (cx) {
     var isI = cx.id === 'ipark';
+    var isZ = cx.id === 'zenith';
     var lines = isI
       ? ['1동 66층 · 2동 72층 · 3동 46층', '199개 평면 · 118.45~423.41㎡', '전용률 64~70% (KB 기준)']
+      : isZ
+      ? ['101동 80층 · 102동 75층 · 103동 70층', '148.11~325.30㎡ · 전용 99.40~222.59㎡', '마린시티 · 2011년 준공']
       : ['101~106동 · 6개동', '84 · 104 · 125 · 154 · 244타입', '분양가·계약금까지 표기'];
-    return '<button type="button" class="hcard' + (isI ? ' ipark' : ' centum') + '" data-cx="' + cx.id + '">'
+    return '<button type="button" class="hcard' + (isI ? ' ipark' : (isZ ? ' zenith' : ' centum')) + '" data-cx="' + cx.id + '">'
       + '<span class="hc-top"><b>' + esc(cx.name) + '</b><em>' + esc(cx.desc) + '</em></span>'
       + '<span class="hc-sub">' + esc(cx.sub) + '</span>'
       + '<span class="hc-lines">' + lines.map(function (l) { return '<i>' + esc(l) + '</i>'; }).join('') + '</span>'
@@ -2398,7 +2451,7 @@ function admWhen(iso) {
 function admUnit(k) {
   var p = String(k || '').split('-');
   if (p.length !== 3) return String(k || '기록 없음');
-  return p[0] + '동 ' + hoNum(parseInt(p[2], 10), parseInt(p[1], 10)) + '호';
+  return dongLabel(p[0]) + ' ' + hoNum(parseInt(p[2], 10), parseInt(p[1], 10)) + '호';
 }
 function admUnitCmp(a, b) {
   var x = String(a || '').split('-').map(Number), y = String(b || '').split('-').map(Number);
