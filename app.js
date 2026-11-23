@@ -1267,6 +1267,10 @@ $('form-signup').addEventListener('submit', async function (e) {
     setMsg('su-msg', '이메일 주소를 확인해 주세요. 예: name@example.com');
     $('su-email').focus(); return;
   }
+  if (isIdEmail(mail)) {
+    setMsg('su-msg', '이 주소는 쓸 수 없습니다. 실제로 쓰는 이메일을 넣어 주세요.');
+    $('su-email').focus(); return;
+  }
   /* 아이디 = 사무소 이름. 칸에 친 그대로(공백·대소문자 유지) 사무소명으로 보여 준다. */
   var agency = raw.replace(/\s+/g, ' ').trim() || username;
   if (pw.length < 6) { setMsg('su-msg', '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.'); return; }
