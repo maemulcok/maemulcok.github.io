@@ -1914,7 +1914,7 @@ async function admOpenOffice(uid) {
     + '<span class="of-chip">보류·완료 <b>' + cnt.done + '</b></span>'
     + '<span class="of-chip">급매 <b>' + cnt.urg + '</b></span>'
     + '<span class="of-chip">기타 <b>' + cnt.none + '</b></span></div>';
-  var table = rows.length ? ('<table class="of-table"><thead><tr>'
+  var table = rows.length ? ('<div class="of-tw"><table class="of-table"><thead><tr>'
     + '<th>호실</th><th>상태</th><th>금액</th><th>소유주</th><th>임차인</th><th>연락처</th><th>임차인 연락처</th><th>만기일</th><th>메모</th><th>수정</th>'
     + '</tr></thead><tbody>' + rows.map(function (r) {
       return '<tr>'
@@ -1929,7 +1929,7 @@ async function admOpenOffice(uid) {
         + '<td class="memo-c">' + esc(cut(r.memo || '', 60) || '—') + '</td>'
         + '<td>' + esc(admWhen(r.updated_at)) + '</td>'
         + '</tr>';
-    }).join('') + '</tbody></table>') : '<div class="adm-empty">등록한 매물이 없습니다.</div>';
+    }).join('') + '</tbody></table></div>') : '<div class="adm-empty">등록한 매물이 없습니다.</div>';
   var hist = '<aside class="of-hist">'
     + '<div class="of-hist-h">이 회원의 변경 이력 <span>' + adm.userLogs.length + '건</span>'
     + '<button class="btn tiny" type="button" id="of-hist-refresh" title="이력을 다시 불러옵니다">새로고침</button></div>'
