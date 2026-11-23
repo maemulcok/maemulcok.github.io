@@ -1453,6 +1453,7 @@ var helpEl = $('help'), ov2 = $('ov2');
 function showHelp(on) { helpEl.classList.toggle('on', on); ov2.classList.toggle('on', on); }
 $('btn-help').onclick = function () { showHelp(true); };
 $('help-close').onclick = function () { showHelp(false); };
+$('help-x').onclick = function () { showHelp(false); };
 ov2.onclick = function () { showHelp(false); };
 $('ribbon-help').onclick = function () { showSetupHelp(); };
 
