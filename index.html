@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
 <title>센텀르엘 (매물)</title>
-<link rel="stylesheet" href="app.css?v=1">
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 
@@ -58,7 +58,7 @@
       </div>
       <label class="consent" for="su-consent">
         <input type="checkbox" id="su-consent">
-        <span>서비스 이용약관 및 <b>장애 복구·백업 목적의 데이터 보관</b>에 동의합니다. (필수)</span>
+        <span>서비스 이용약관 및 <b>장애 복구·백업 목적의 데이터 보관</b>, <b>관리자의 열람·복구</b>에 동의합니다. (필수)</span>
       </label>
       <button class="auth-more" type="button" id="consent-more">무엇을 보관하나요?</button>
       <div class="auth-msg" id="su-msg"></div>
@@ -106,6 +106,7 @@
     <li><b>무엇을</b> — 사무소명·담당자명·이메일, 그리고 직접 등록한 매물 기록(동·호수, 상태, 금액, 소유주·임차인·연락처, 메모).</li>
     <li><b>왜</b> — 서버 장애나 실수로 지워졌을 때 되살리기 위한 정기 백업, 그리고 창업·운영상 장애 대응 목적입니다. 광고나 판매에 쓰지 않습니다.</li>
     <li><b>어디에</b> — 본인 계정만 열람할 수 있는 데이터베이스와, 관리자만 접근하는 암호화된 백업 파일(날짜별 JSON)에 보관합니다.</li>
+    <li><b>관리자 열람·복구</b> — 장애 복구·백업·고객 지원을 위해 관리자가 데이터와 변경 이력을 열람할 수 있고, 실수로 지우거나 덮어쓴 호실 기록을 되살려 드릴 수 있습니다. 관리자가 복구한 내용도 변경 이력에 남습니다.</li>
     <li><b>얼마나</b> — 서비스 이용 기간 동안 보관하고, 탈퇴나 삭제를 요청하면 백업본에서도 지체 없이 지웁니다.</li>
     <li><b>다른 사무소</b> — 각 계정의 매물은 서로 보이지 않습니다. 서버 접근 규칙(RLS)으로 막혀 있습니다.</li>
   </ul>
@@ -157,6 +158,7 @@
           <span class="zval" id="zval">100%</span>
         </div>
         <button class="chip btn" id="btn-help" title="사용 안내">?</button>
+        <button class="chip btn adm-open-btn" id="btn-admin" title="관리자 콘솔" hidden>관리자 콘솔</button>
         <button class="chip btn" id="btn-logout" title="로그아웃">로그아웃</button>
       </div>
 
@@ -268,10 +270,56 @@
   <div class="foot"><button class="btn primary" id="help-close">확인</button></div>
 </div>
 
+<!-- ============================================================
+     관리자 콘솔 (role = 'admin' 인 계정에만 열립니다)
+     ============================================================ -->
+<div class="ov" id="ov4"></div>
+<div class="adm" id="adm" role="dialog" aria-label="관리자 콘솔" aria-modal="true">
+  <div class="adm-head">
+    <div class="adm-title">관리자 콘솔<small>회원 · 변경 이력 · 복구</small></div>
+    <div class="adm-tabs" id="adm-tabs">
+      <button data-atab="members" class="on">회원 목록</button>
+      <button data-atab="logs">활동 이력·복구</button>
+    </div>
+    <button class="adm-x" id="adm-x" aria-label="닫기" title="닫기 (Esc)">×</button>
+  </div>
+
+  <div class="adm-body">
+    <!-- 회원 목록 -->
+    <section class="adm-pane" id="adm-pane-members">
+      <div class="adm-tools">
+        <input id="adm-mq" type="search" placeholder="사무소·담당자·이메일 검색" autocomplete="off">
+        <span class="adm-spacer"></span>
+        <button class="btn" id="adm-mrefresh">새로고침</button>
+      </div>
+      <div class="adm-list" id="adm-members"></div>
+      <div class="adm-office" id="adm-office" hidden></div>
+    </section>
+
+    <!-- 활동 이력 -->
+    <section class="adm-pane" id="adm-pane-logs" hidden>
+      <div class="adm-tools">
+        <select id="adm-user"><option value="">전체 사무소</option></select>
+        <select id="adm-action">
+          <option value="">전체 변경</option>
+          <option value="insert">등록</option>
+          <option value="update">수정</option>
+          <option value="delete">삭제</option>
+        </select>
+        <input id="adm-q" type="search" placeholder="동·호수 검색 (예: 101, 4503)" autocomplete="off">
+        <span class="adm-spacer"></span>
+        <button class="btn" id="adm-refresh">새로고침</button>
+      </div>
+      <div class="adm-logs" id="adm-logs"></div>
+      <div class="adm-more-wrap"><button class="btn" id="adm-more" hidden>더 보기</button></div>
+    </section>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="config.js?v=1"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

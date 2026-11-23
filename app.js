@@ -177,6 +177,7 @@ var CloudStore = {
     var out = {}, from = 0, step = 1000;
     for (;;) {
       var res = await S.sb.from('listings').select('*')
+        .eq('user_id', S.user.id)          /* 관리자 계정이어도 배치표는 내 매물만 */
         .order('unit_key', { ascending: true }).range(from, from + step - 1);
       if (res.error) throw res.error;
       var rows = res.data || [];
@@ -380,10 +381,12 @@ function buildBoard() {
 
   /* 필터 선택지 */
   var selT = $('sel-type');
+  selT.length = 1;              /* 다시 로그인해도 선택지가 겹치지 않게 */
   types.forEach(function (t) {
     var o = document.createElement('option'); o.value = t; o.textContent = t + '타입'; selT.appendChild(o);
   });
   var selD = $('sel-dong');
+  selD.length = 1;
   DONGS.forEach(function (d) {
     var o = document.createElement('option'); o.value = d; o.textContent = d + '동'; selD.appendChild(o);
   });
@@ -1007,7 +1010,7 @@ $('su-consent').addEventListener('change', function () {
 document.addEventListener('keydown', function (e) {
   var t = e.target;
   var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-  if (e.key === 'Escape') { closeCard(); showHelp(false); hideTip(); return; }
+  if (e.key === 'Escape') { closeCard(); showHelp(false); hideTip(); admClose(); return; }
   if (!S.ready || typing) return;
   if (e.key === '/') { e.preventDefault(); qEl.focus(); return; }
   if (e.key === 'f' || e.key === 'F') { VIEW.zoom = 'fit'; saveView(); applyZoom(); return; }
@@ -1024,6 +1027,7 @@ async function signOut() {
   if (!LIVE) localStorage.removeItem('cls.demo.session');
   S.user = null; S.profile = null; S.notes = {}; S.pending.clear(); cur = null;
   S.ready = false; built = false; cellMap.clear();
+  admClose(); $('btn-admin').hidden = true;
   mc.classList.remove('on'); ov.classList.remove('on'); showHelp(false);
   $('app').hidden = true; $('pending').hidden = true;
   showAuth('login');
@@ -1244,7 +1248,7 @@ async function enterApp(user, knownProfile) {
     S.user = user;
     var profile = knownProfile;
     if (!profile) profile = await loadProfile(user);
-    S.profile = profile || { agency_name: '', manager_name: '', approved: true };
+    S.profile = profile || { agency_name: '', manager_name: '', approved: true, role: 'user' };
 
     if (S.profile.approved === false) {
       $('boot').hidden = true; $('auth').hidden = true; $('app').hidden = true;
@@ -1258,6 +1262,7 @@ async function enterApp(user, knownProfile) {
 
     var office = S.profile.agency_name || user.email.split('@')[0];
     $('hd-office').textContent = office;
+    $('btn-admin').hidden = !admOk();
     $('hs-all').textContent = (BOARD.units || []).length.toLocaleString('ko-KR');
     document.title = office + ' · 센텀르엘 (매물)';
 
@@ -1297,8 +1302,12 @@ async function enterApp(user, knownProfile) {
 }
 
 async function loadProfile(user) {
-  if (!LIVE) return { agency_name: '', manager_name: '', approved: true };
-  var res = await S.sb.from('profiles').select('agency_name,manager_name,approved').eq('id', user.id).maybeSingle();
+  if (!LIVE) return { agency_name: '', manager_name: '', approved: true, role: 'user' };
+  var res = await S.sb.from('profiles').select('agency_name,manager_name,approved,role').eq('id', user.id).maybeSingle();
+  if (res.error && /role/i.test(res.error.message || '')) {
+    /* 관리자 기능 이전에 만든 데이터베이스여도 앱은 그대로 열린다 */
+    res = await S.sb.from('profiles').select('agency_name,manager_name,approved').eq('id', user.id).maybeSingle();
+  }
   if (res.error) {
     console.warn('프로필을 읽지 못했습니다.', res.error);
     if (/relation .* does not exist|does not exist/i.test(res.error.message || '')) {
@@ -1308,7 +1317,7 @@ async function loadProfile(user) {
   }
   if (res.data) return res.data;
   var m = user.user_metadata || {};
-  return { agency_name: m.agency_name || '', manager_name: m.manager_name || '', approved: true };
+  return { agency_name: m.agency_name || '', manager_name: m.manager_name || '', approved: true, role: 'user' };
 }
 
 function onRemoteChange(payload) {
@@ -1347,6 +1356,329 @@ document.addEventListener('visibilitychange', function () {
 });
 
 /* ---------- 부팅 ---------- */
+/* ============================================================
+   관리자 콘솔 — 회원 목록 · 활동 이력 · 복구
+   role = 'admin' 인 계정에만 버튼이 보이고, 실제 허용은 서버(RLS)가 판단합니다.
+   ============================================================ */
+var ACT_KO = { insert: '등록', update: '수정', delete: '삭제' };
+var F_LBL = { status: '상태', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', urgent: '급매', memo: '메모' };
+var admEl = $('adm'), ov4 = $('ov4');
+var adm = { on: false, tab: 'members', members: [], people: {}, logs: [], cursor: null,
+            user: '', action: '', q: '', openUser: null, busy: false, logsLoaded: false };
+
+function admOk() { return !!(LIVE && S.profile && S.profile.role === 'admin'); }
+
+function admWhen(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  var now = new Date();
+  if (d.toDateString() === now.toDateString()) return '오늘 ' + hm;
+  if (d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return '어제 ' + hm;
+  return pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + ' ' + hm;
+}
+
+function admUnit(k) {
+  var p = String(k || '').split('-');
+  if (p.length !== 3) return String(k || '기록 없음');
+  return p[0] + '동 ' + hoNum(parseInt(p[2], 10), parseInt(p[1], 10)) + '호';
+}
+function admUnitCmp(a, b) {
+  var x = String(a || '').split('-').map(Number), y = String(b || '').split('-').map(Number);
+  return (x[0] - y[0]) || (x[2] - y[2]) || (x[1] - y[1]);
+}
+function cut(s, n) {
+  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+function admVal(f, v) {
+  if (f === 'status') return ST_NAME[cleanState(v)] || '—';
+  if (f === 'urgent') return v ? '표시' : '표시 안 함';
+  if (v == null || String(v).trim() === '') return '없음';
+  return cut(v, 40);
+}
+function admFields(d, list) {
+  return (list || ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'memo'])
+    .filter(function (f) { return admVal(f, d[f]) !== '없음'; });
+}
+function admPlain(d) {
+  return admFields(d).map(function (f) { return F_LBL[f] + ' ' + admVal(f, d[f]); }).join(' · ') || '내용 없음';
+}
+function admSummary(g) {
+  var b = g.before_data || {}, a = g.after_data || {};
+  if (g.action === 'insert') {
+    return '<em>등록</em> ' + (admFields(a).map(function (f) { return esc(F_LBL[f] + ' ' + admVal(f, a[f])); }).join(' · ') || '빈 호실');
+  }
+  if (g.action === 'delete') {
+    return '<em>삭제</em> ' + (admFields(b).map(function (f) { return esc(F_LBL[f] + ' ' + admVal(f, b[f])); }).join(' · ') || '빈 호실');
+  }
+  var parts = [];
+  ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'urgent', 'memo'].forEach(function (f) {
+    var x = b[f] == null ? '' : String(b[f]), y = a[f] == null ? '' : String(a[f]);
+    if (x !== y) parts.push(F_LBL[f] + ' ' + esc(admVal(f, b[f])) + ' <em>→</em> ' + esc(admVal(f, a[f])));
+  });
+  return parts.length ? parts.join(' · ') : '<em>바뀐 값 없음</em>';
+}
+function admWho(uid) {
+  var p = adm.people[uid];
+  if (!p) return '알 수 없는 사무소';
+  return (p.agency_name || '(사무소명 없음)') + (p.manager_name ? ' ' + p.manager_name : '');
+}
+
+function admOpen() {
+  if (!admOk()) { toast('관리자 권한이 있는 계정에서만 열립니다.'); return; }
+  adm.on = true;
+  admEl.classList.add('on'); ov4.classList.add('on');
+  admSetTab(adm.tab);
+  admLoadPeople().then(function () { admRenderMembers(); admFillUserSelect(); if (adm.tab === 'logs') admRenderLogs(); });
+  admLoadMembers();
+  if (adm.tab === 'logs' && !adm.logsLoaded) admLoadLogs(true);
+}
+function admClose() {
+  if (!admEl) return;
+  adm.on = false;
+  admEl.classList.remove('on');
+  if (ov4) ov4.classList.remove('on');
+}
+function admSetTab(t) {
+  adm.tab = t;
+  document.querySelectorAll('#adm-tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.atab === t); });
+  $('adm-pane-members').hidden = (t !== 'members');
+  $('adm-pane-logs').hidden = (t !== 'logs');
+  if (t === 'logs' && !adm.logsLoaded) admLoadLogs(true);
+}
+
+async function admLoadPeople() {
+  var res = await S.sb.from('profiles').select('id,agency_name,manager_name,email,role');
+  if (res.error) { console.warn('프로필 목록', res.error); return; }
+  var map = {};
+  (res.data || []).forEach(function (p) { map[p.id] = p; });
+  adm.people = map;
+}
+async function admLoadMembers() {
+  if (!admOk()) return;
+  var res = await S.sb.rpc('admin_members');
+  if (res.error) {
+    $('adm-members').innerHTML = '<div class="adm-empty">회원 목록을 읽지 못했습니다.<br>' + esc(res.error.message || '') + '</div>';
+    console.warn('admin_members', res.error);
+    return;
+  }
+  adm.members = res.data || [];
+  admRenderMembers();
+  admFillUserSelect();
+}
+function admRenderMembers() {
+  var el = $('adm-members');
+  if (!el) return;
+  var q = norm($('adm-mq').value || '');
+  var list = adm.members.filter(function (m) {
+    return !q || norm([m.agency_name, m.manager_name, m.email].join(' ')).indexOf(q) >= 0;
+  });
+  if (!list.length) {
+    el.innerHTML = '<div class="adm-empty">' + (adm.members.length ? '검색 결과가 없습니다.' : '아직 가입한 사무소가 없습니다.') + '</div>';
+    return;
+  }
+  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span></div>';
+  el.innerHTML = head + list.map(function (m) {
+    return '<button class="adm-mrow" type="button" data-uid="' + esc(m.user_id) + '">'
+      + '<span class="am-name">' + esc(m.agency_name || '(사무소명 없음)') + '</span>'
+      + '<span class="am-mgr">' + esc(m.manager_name || '—') + '</span>'
+      + '<span class="am-mail">' + esc(m.email || '—') + '</span>'
+      + '<span class="am-cnt">' + Number(m.listing_count || 0).toLocaleString('ko-KR') + '호실</span>'
+      + '<span class="am-last">' + esc(admWhen(m.last_activity)) + '</span>'
+      + (m.role === 'admin' ? '<span class="am-badge">관리자</span>' : '<span class="am-last">일반</span>')
+      + '</button>';
+  }).join('');  el.querySelectorAll('[data-uid]').forEach(function (b) {
+    b.onclick = function () { admOpenOffice(b.dataset.uid); };
+  });
+}
+function admFillUserSelect() {
+  var sel = $('adm-user');
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">전체 사무소</option>' + adm.members.map(function (m) {
+    return '<option value="' + esc(m.user_id) + '">' + esc(m.agency_name || m.email || m.user_id) + '</option>';
+  }).join('');
+  if (cur && adm.members.some(function (m) { return m.user_id === cur; })) sel.value = cur;
+}
+async function admOpenOffice(uid) {
+  adm.openUser = uid;
+  var p = adm.people[uid] || {};
+  var m = adm.members.filter(function (x) { return x.user_id === uid; })[0] || {};
+  $('adm-members').hidden = true;
+  var box = $('adm-office');
+  box.hidden = false;
+  box.innerHTML = '<div class="adm-empty">매물을 불러오는 중…</div>';
+  var res = await S.sb.from('listings').select('*').eq('user_id', uid).order('unit_key');
+  if (res.error) {
+    box.innerHTML = '<div class="adm-empty">매물을 읽지 못했습니다.<br>' + esc(res.error.message || '') + '</div>';
+    return;
+  }
+  var rows = (res.data || []).slice().sort(function (a, b) { return admUnitCmp(a.unit_key, b.unit_key); });
+  var cnt = { sale: 0, jeonse: 0, wolse: 0, done: 0, none: 0, urg: 0 };
+  rows.forEach(function (r) {
+    cnt[cleanState(r.status)]++;
+    if (r.urgent) cnt.urg++;
+  });
+  var head = '<div class="of-head">'
+    + '<button class="btn" type="button" id="of-back">← 목록</button>'
+    + '<b>' + esc(m.agency_name || p.agency_name || '(사무소명 없음)') + '</b>'
+    + '<span>' + esc(m.manager_name || p.manager_name || '') + (p.email ? ' · ' + esc(p.email) : '') + '</span>'
+    + '<span>가입 ' + esc(admWhen(m.created_at)) + '</span></div>';
+  var chips = '<div class="of-chips">'
+    + '<span class="of-chip">전체 <b>' + rows.length + '</b></span>'
+    + '<span class="of-chip">매매 <b>' + cnt.sale + '</b></span>'
+    + '<span class="of-chip">전세 <b>' + cnt.jeonse + '</b></span>'
+    + '<span class="of-chip">월세 <b>' + cnt.wolse + '</b></span>'
+    + '<span class="of-chip">보류·완료 <b>' + cnt.done + '</b></span>'
+    + '<span class="of-chip">급매 <b>' + cnt.urg + '</b></span>'
+    + '<span class="of-chip">기타 <b>' + cnt.none + '</b></span></div>';
+  var table = rows.length ? ('<table class="of-table"><thead><tr>'
+    + '<th>호실</th><th>상태</th><th>금액</th><th>소유주</th><th>임차인</th><th>연락처</th><th>메모</th><th>수정</th>'
+    + '</tr></thead><tbody>' + rows.map(function (r) {
+      return '<tr>'
+        + '<td class="num-c">' + esc(admUnit(r.unit_key)) + (r.urgent ? ' <span class="al-act delete" style="padding:0 5px">급</span>' : '') + '</td>'
+        + '<td>' + esc(ST_NAME[cleanState(r.status)] || '—') + '</td>'
+        + '<td>' + esc(str(r.price) || '—') + '</td>'
+        + '<td>' + esc(str(r.owner_name) || '—') + '</td>'
+        + '<td>' + esc(str(r.tenant_name) || '—') + '</td>'
+        + '<td>' + esc(str(r.phone) || '—') + '</td>'
+        + '<td class="memo-c">' + esc(cut(r.memo || '', 60) || '—') + '</td>'
+        + '<td>' + esc(admWhen(r.updated_at)) + '</td>'
+        + '</tr>';
+    }).join('') + '</tbody></table>') : '<div class="adm-empty">등록한 매물이 없습니다.</div>';
+  box.innerHTML = head + chips + table;
+  $('of-back').onclick = function () {
+    box.hidden = true;
+    $('adm-members').hidden = false;
+    adm.openUser = null;
+  };
+}
+
+async function admLoadLogs(reset) {
+  if (!admOk()) return;
+  if (reset) { adm.logs = []; adm.cursor = null; }
+  var qy = S.sb.from('activity_logs')
+    .select('id,user_id,unit_key,action,before_data,after_data,actor_id,created_at')
+    .order('id', { ascending: false }).limit(30);
+  if (adm.user) qy = qy.eq('user_id', adm.user);
+  if (adm.action) qy = qy.eq('action', adm.action);
+  if (adm.q) qy = qy.ilike('unit_key', '%' + adm.q + '%');
+  if (adm.cursor) qy = qy.lt('id', adm.cursor);
+  var res = await qy;
+  $('adm-logs').setAttribute('aria-busy', '0');
+  if (res.error) {
+    $('adm-logs').innerHTML = '<div class="adm-empty">활동 이력을 읽지 못했습니다.<br>' + esc(res.error.message || '') + '</div>';
+    console.warn('activity_logs', res.error);
+    return;
+  }
+  var rows = res.data || [];
+  adm.logs = reset ? rows : adm.logs.concat(rows);
+  if (rows.length) adm.cursor = rows[rows.length - 1].id;
+  adm.logsLoaded = true;
+  $('adm-more').hidden = rows.length < 30;
+  admRenderLogs();
+}
+function admRenderLogs() {
+  var el = $('adm-logs');
+  if (!el) return;
+  if (!adm.logs.length) {
+    el.innerHTML = '<div class="adm-empty">' + (adm.logsLoaded ? '기록이 없습니다.' : '불러오는 중…') + '</div>';
+    return;
+  }
+  el.innerHTML = adm.logs.map(function (g) {
+    var byAdmin = g.actor_id && g.actor_id !== g.user_id;
+    return '<div class="adm-log">'
+      + '<div class="al-top"><span class="al-when">' + esc(admWhen(g.created_at)) + '</span>'
+      + '<span class="al-who">' + esc(admWho(g.user_id)) + '</span>'
+      + '<span class="al-act ' + esc(g.action) + '">' + esc(ACT_KO[g.action] || g.action) + '</span>'
+      + '<b>' + esc(admUnit(g.unit_key)) + '</b>'
+      + (byAdmin ? '<span class="al-tag">관리자 작업</span>' : '')
+      + '</div>'
+      + '<div class="al-diff">' + admSummary(g) + '</div>'
+      + '<div class="al-foot"><button class="al-undo" type="button" data-log="' + esc(g.id) + '">'
+      + (g.action === 'insert' ? '등록 전으로 되돌리기' : '이 상태로 복구') + '</button></div>'
+      + '</div>';
+  }).join('');
+  el.querySelectorAll('[data-log]').forEach(function (b) {
+    b.onclick = function () { admRestore(b.dataset.log, b); };
+  });
+}
+async function admRestore(id, btn) {
+  if (adm.busy) return;
+  var g = adm.logs.filter(function (x) { return String(x.id) === String(id); })[0];
+  if (!g) return;
+  var d = g.before_data;
+  var who = admWho(g.user_id), unit = admUnit(g.unit_key);
+  var msg;
+  if (g.action === 'insert' || !d) {
+    msg = unit + ' · ' + who + '\n\n이 등록을 되돌려 매물 기록을 지울까요?\n(지운 사실도 이력에 남습니다.)';
+  } else {
+    msg = unit + ' · ' + who + '\n\n아래 상태로 되돌릴까요?\n\n· ' + admPlain(d)
+        + '\n\n지금 기록은 덮어써지고, 복구한 내용도 이력에 남습니다.';
+  }
+  if (!confirm(msg)) return;
+  adm.busy = true;
+  if (btn) btn.disabled = true;
+  try {
+    var res;
+    if (g.action === 'insert' || !d) {
+      res = await S.sb.from('listings').delete().eq('user_id', g.user_id).eq('unit_key', g.unit_key);
+    } else {
+      res = await S.sb.from('listings').upsert({
+        user_id: g.user_id,
+        unit_key: g.unit_key,
+        status: cleanState(d.status),
+        price: str(d.price) || null,
+        owner_name: str(d.owner_name) || null,
+        tenant_name: str(d.tenant_name) || null,
+        phone: str(d.phone) || null,
+        memo: str(d.memo) || null,
+        urgent: !!d.urgent
+      }, { onConflict: 'user_id,unit_key' });
+    }
+    if (res.error) throw res.error;
+    toast((g.action === 'insert' || !d) ? (unit + ' · 등록 전으로 되돌렸습니다.') : (unit + ' · 복구 완료'));
+    /* 관리자 본인 매물이면 이 화면도 맞춘다 */
+    if (S.user && S.user.id === g.user_id) {
+      try {
+        S.notes = await Store().loadAll(); mirrorNow(); paintAll(); applyFilters();
+      } catch (e) { console.warn(e); }
+    }
+    adm.logsLoaded = false;
+    admLoadLogs(true);
+    admLoadMembers();
+    if (adm.openUser === g.user_id && !$('adm-office').hidden) admOpenOffice(g.user_id);
+  } catch (e) {
+    console.warn('복구 실패', e);
+    toast('복구하지 못했습니다: ' + ((e && e.message) || '연결을 확인해 주세요.'));
+  } finally {
+    adm.busy = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+$('btn-admin').onclick = admOpen;
+$('adm-x').onclick = admClose;
+ov4.onclick = admClose;
+document.querySelectorAll('#adm-tabs button').forEach(function (b) {
+  b.onclick = function () { admSetTab(b.dataset.atab); };
+});
+$('adm-mq').addEventListener('input', admRenderMembers);
+$('adm-mrefresh').onclick = function () { admLoadPeople().then(admRenderMembers); admLoadMembers(); };
+$('adm-user').addEventListener('change', function () { adm.user = this.value; admLoadLogs(true); });
+$('adm-action').addEventListener('change', function () { adm.action = this.value; admLoadLogs(true); });
+var admQT = null;
+$('adm-q').addEventListener('input', function () {
+  var v = str(this.value);
+  clearTimeout(admQT);
+  admQT = setTimeout(function () { adm.q = v; admLoadLogs(true); }, 280);
+});
+$('adm-refresh').onclick = function () { admLoadLogs(true); };
+$('adm-more').onclick = function () { admLoadLogs(false); };
+
 function showSetupHelp() {
   alert('데모 모드입니다.\n\n'
     + '실제 서비스로 바꾸려면 관리자가 다음을 하면 됩니다.\n'
