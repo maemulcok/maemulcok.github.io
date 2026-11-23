@@ -118,22 +118,75 @@ var IDX = new Map(), LINE_TYPE = {}, LINE_TY = {}, DONG_CNT = {}, LINE_CNT = {},
 /* 해운대아이파크 타입 색상 (평형대별) */
 var IPARK_COLOR = {
   '36': { bg: '#CFE3CF', bd: '#A9C4A9', fg: '#1F2937' },
+  '37': { bg: 'hsl(137,46%,84%)', bd: 'hsl(137,34%,66%)', fg: '#1F2937' },
+  '38': { bg: 'hsl(275,46%,84%)', bd: 'hsl(275,34%,66%)', fg: '#1F2937' },
+  '39': { bg: 'hsl(52,46%,84%)', bd: 'hsl(52,34%,66%)', fg: '#1F2937' },
+  '40': { bg: 'hsl(190,46%,84%)', bd: 'hsl(190,34%,66%)', fg: '#1F2937' },
+  '41': { bg: 'hsl(327,46%,84%)', bd: 'hsl(327,34%,66%)', fg: '#1F2937' },
   '42': { bg: '#C7DDF0', bd: '#A2BDD3', fg: '#1F2937' },
+  '43': { bg: 'hsl(242,46%,84%)', bd: 'hsl(242,34%,66%)', fg: '#1F2937' },
+  '44': { bg: 'hsl(20,46%,84%)', bd: 'hsl(20,34%,66%)', fg: '#1F2937' },
   '45': { bg: '#F3E39B', bd: '#D2C27C', fg: '#1F2937' },
+  '46': { bg: 'hsl(295,46%,84%)', bd: 'hsl(295,34%,66%)', fg: '#1F2937' },
+  '47': { bg: 'hsl(72,46%,84%)', bd: 'hsl(72,34%,66%)', fg: '#1F2937' },
   '48': { bg: '#B9B3D6', bd: '#9A94B8', fg: '#1F2937' },
+  '49': { bg: 'hsl(347,46%,84%)', bd: 'hsl(347,34%,66%)', fg: '#1F2937' },
+  '50': { bg: 'hsl(125,46%,84%)', bd: 'hsl(125,34%,66%)', fg: '#1F2937' },
   '51': { bg: '#F6F1D6', bd: '#D8D2AE', fg: '#1F2937' },
+  '52': { bg: 'hsl(40,46%,84%)', bd: 'hsl(40,34%,66%)', fg: '#1F2937' },
+  '53': { bg: 'hsl(177,46%,84%)', bd: 'hsl(177,34%,66%)', fg: '#1F2937' },
   '54': { bg: '#CBDCC4', bd: '#A8BCA1', fg: '#1F2937' },
+  '55': { bg: 'hsl(92,46%,84%)', bd: 'hsl(92,34%,66%)', fg: '#1F2937' },
+  '56': { bg: 'hsl(230,46%,84%)', bd: 'hsl(230,34%,66%)', fg: '#1F2937' },
+  '57': { bg: 'hsl(7,46%,84%)', bd: 'hsl(7,34%,66%)', fg: '#1F2937' },
+  '58': { bg: 'hsl(145,46%,84%)', bd: 'hsl(145,34%,66%)', fg: '#1F2937' },
+  '59': { bg: 'hsl(282,46%,84%)', bd: 'hsl(282,34%,66%)', fg: '#1F2937' },
   '60': { bg: '#DDEB9E', bd: '#BCCB7A', fg: '#1F2937' },
+  '61': { bg: 'hsl(197,46%,84%)', bd: 'hsl(197,34%,66%)', fg: '#1F2937' },
+  '62': { bg: 'hsl(335,46%,84%)', bd: 'hsl(335,34%,66%)', fg: '#1F2937' },
+  '63': { bg: 'hsl(112,46%,84%)', bd: 'hsl(112,34%,66%)', fg: '#1F2937' },
+  '64': { bg: 'hsl(250,46%,84%)', bd: 'hsl(250,34%,66%)', fg: '#1F2937' },
+  '65': { bg: 'hsl(27,46%,84%)', bd: 'hsl(27,34%,66%)', fg: '#1F2937' },
   '66': { bg: '#F6C9A8', bd: '#D6AA89', fg: '#1F2937' },
+  '67': { bg: 'hsl(302,46%,84%)', bd: 'hsl(302,34%,66%)', fg: '#1F2937' },
+  '68': { bg: 'hsl(80,46%,84%)', bd: 'hsl(80,34%,66%)', fg: '#1F2937' },
+  '69': { bg: 'hsl(217,46%,84%)', bd: 'hsl(217,34%,66%)', fg: '#1F2937' },
+  '70': { bg: 'hsl(355,46%,84%)', bd: 'hsl(355,34%,66%)', fg: '#1F2937' },
+  '71': { bg: 'hsl(132,46%,84%)', bd: 'hsl(132,34%,66%)', fg: '#1F2937' },
   '72': { bg: '#A9D3AE', bd: '#87B08C', fg: '#1F2937' },
+  '73': { bg: 'hsl(47,46%,84%)', bd: 'hsl(47,34%,66%)', fg: '#1F2937' },
+  '74': { bg: 'hsl(185,46%,84%)', bd: 'hsl(185,34%,66%)', fg: '#1F2937' },
+  '75': { bg: 'hsl(322,46%,84%)', bd: 'hsl(322,34%,66%)', fg: '#1F2937' },
+  '76': { bg: 'hsl(100,46%,84%)', bd: 'hsl(100,34%,66%)', fg: '#1F2937' },
   '78': { bg: '#D9CD93', bd: '#B9AE74', fg: '#1F2937' },
+  '79': { bg: 'hsl(15,46%,84%)', bd: 'hsl(15,34%,66%)', fg: '#1F2937' },
+  '80': { bg: 'hsl(152,46%,84%)', bd: 'hsl(152,34%,66%)', fg: '#1F2937' },
   '81': { bg: '#F3BFC6', bd: '#D19EA4', fg: '#1F2937' },
+  '82': { bg: 'hsl(67,46%,84%)', bd: 'hsl(67,34%,66%)', fg: '#1F2937' },
+  '83': { bg: 'hsl(205,46%,84%)', bd: 'hsl(205,34%,66%)', fg: '#1F2937' },
+  '84': { bg: 'hsl(342,46%,84%)', bd: 'hsl(342,34%,66%)', fg: '#1F2937' },
+  '86': { bg: 'hsl(120,46%,84%)', bd: 'hsl(120,34%,66%)', fg: '#1F2937' },
+  '87': { bg: 'hsl(257,46%,84%)', bd: 'hsl(257,34%,66%)', fg: '#1F2937' },
+  '88': { bg: 'hsl(35,46%,84%)', bd: 'hsl(35,34%,66%)', fg: '#1F2937' },
   '89': { bg: '#B9C4EA', bd: '#98A3C7', fg: '#1F2937' },
+  '90': { bg: 'hsl(310,46%,84%)', bd: 'hsl(310,34%,66%)', fg: '#1F2937' },
+  '91': { bg: 'hsl(87,46%,84%)', bd: 'hsl(87,34%,66%)', fg: '#1F2937' },
+  '92': { bg: 'hsl(225,46%,84%)', bd: 'hsl(225,34%,66%)', fg: '#1F2937' },
+  '94': { bg: 'hsl(2,46%,84%)', bd: 'hsl(2,34%,66%)', fg: '#1F2937' },
+  '95': { bg: 'hsl(140,46%,84%)', bd: 'hsl(140,34%,66%)', fg: '#1F2937' },
   '96': { bg: '#EDE7A8', bd: '#CCC789', fg: '#1F2937' },
+  '97': { bg: 'hsl(55,46%,84%)', bd: 'hsl(55,34%,66%)', fg: '#1F2937' },
+  '98': { bg: 'hsl(192,46%,84%)', bd: 'hsl(192,34%,66%)', fg: '#1F2937' },
   '99': { bg: '#BEDFF2', bd: '#9CBED0', fg: '#1F2937' },
+  '100': { bg: 'hsl(107,46%,84%)', bd: 'hsl(107,34%,66%)', fg: '#1F2937' },
+  '101': { bg: 'hsl(245,46%,84%)', bd: 'hsl(245,34%,66%)', fg: '#1F2937' },
   '102': { bg: '#C3CBD6', bd: '#A3ABB6', fg: '#1F2937' },
+  '103': { bg: 'hsl(160,46%,84%)', bd: 'hsl(160,34%,66%)', fg: '#1F2937' },
+  '104': { bg: 'hsl(298,46%,84%)', bd: 'hsl(298,34%,66%)', fg: '#1F2937' },
   '105': { bg: '#D9BEDA', bd: '#B99EBA', fg: '#1F2937' },
-  '127': { bg: '#7FB3E8', bd: '#5F92C6', fg: '#0F172A' }
+  '106': { bg: 'hsl(213,46%,84%)', bd: 'hsl(213,34%,66%)', fg: '#1F2937' },
+  '109': { bg: 'hsl(350,46%,84%)', bd: 'hsl(350,34%,66%)', fg: '#1F2937' },
+  '124': { bg: 'hsl(128,46%,84%)', bd: 'hsl(128,34%,66%)', fg: '#1F2937' }
 };
 
 function dongMetaFor(cx) {
@@ -670,9 +723,27 @@ function applyFilters() {
   });
   updateCounts();
 }
+/* 이 호실이 어느 단지 것인지 — 단지 인덱스가 아직 만들어지기 전에는
+   지금 배치표(IDX)에 있으면 현재 단지로 본다 */
+function noteCxId(k) {
+  var cx = cxByKey(k);
+  if (cx) return cx.id;
+  return IDX.has(k) ? CX.id : null;
+}
+function eachUnitKey(fn) {
+  if (HOME_ON) {
+    CX_LIST.forEach(function (cx) {
+      ((cx.board && cx.board.units) || []).forEach(function (u) { fn(K(u[0], u[1], u[2])); });
+    });
+  } else {
+    (BOARD.units || []).forEach(function (u) { fn(K(u[0], u[1], u[2])); });
+  }
+}
 function updateCounts() {
   var c = { sale: 0, jeonse: 0, wolse: 0, done: 0, memo: 0 };
-  cellMap.forEach(function (td, k) {
+  /* 지금 보고 있는 배치표(홈이면 전체 단지)의 호실만 센다.
+     다른 단지의 매물 수가 섮여 '내 매물 63호실'처럼 보이던 문제를 막는다. */
+  eachUnitKey(function (k) {
     var st = stateOf(k);
     if (st !== 'none') c[st]++;
     if (hasInfo(k)) c.memo++;
@@ -683,8 +754,12 @@ function updateCounts() {
   $('c-done').textContent = c.done.toLocaleString('ko-KR');
   $('c-memo').textContent = c.memo.toLocaleString('ko-KR');
   var mine = 0;
-  Object.keys(S.notes).forEach(function (k) { if (hasInfo(k) || stateOf(k) !== 'none') mine++; });
+  Object.keys(S.notes).forEach(function (k) {
+    if (!(hasInfoNote(S.notes[k]) || stateOf(k) !== 'none')) return;
+    if (HOME_ON || noteCxId(k) === CX.id) mine++;
+  });
   $('c-seed').textContent = mine.toLocaleString('ko-KR');
+  if (HOME_ON) { $('c-show').textContent = '–'; return; }
   var shown = 0, f = curFilter();
   cellMap.forEach(function (td, k) { if (isMatch(td, stateOf(k), f)) shown++; });
   $('c-show').textContent = shown.toLocaleString('ko-KR');
@@ -1838,6 +1913,8 @@ function renderCxMenu() {
     menu.appendChild(b2);
   }
   $('cx-cur').textContent = HOME_ON ? '단지 선택' : CX.name;
+  var hint = $('cx-hint');
+  if (hint) hint.textContent = HOME_ON ? '선택' : '변경';
 }
 function toggleCxMenu() {
   var m = $('cx-menu');
@@ -1877,6 +1954,7 @@ function openHome() {
   var call = $('c-all'); if (call) call.textContent = allN.toLocaleString('ko-KR');
   renderCxMenu();
   renderHome();
+  updateCounts();
   window.scrollTo(0, 0);
 }
 

@@ -8,7 +8,7 @@
 <title>매물콕 · 공인중개사 전용 매물장</title>
 <link rel="icon" type="image/png" href="favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="app.css?v=13">
+<link rel="stylesheet" href="app.css?v=14">
 </head>
 <body>
 
@@ -203,13 +203,18 @@
           </span>
         </div>
         <div class="cxnav">
+          <button type="button" class="chip btn home-btn" id="btn-home" title="홈 대시보드 (전체 단지)">
+            <svg class="hm-ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>홈
+          </button>
           <div class="cxpick" id="cxpick">
-            <button type="button" class="cxbtn" id="cx-btn" aria-haspopup="true">
-              <span class="cx-ic">▦</span><span id="cx-cur">단지 선택</span><span class="cx-ar">▾</span>
+            <button type="button" class="cxbtn" id="cx-btn" aria-haspopup="true" title="단지를 바꾸려면 누르세요">
+              <svg class="cx-bicon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15"/><path d="M12 10h7a1 1 0 0 1 1 1v10"/><path d="M3 21h18"/><path d="M7 9h1.5M7 13h1.5M7 17h1.5M15.5 14H17M15.5 18H17"/></svg>
+              <span id="cx-cur">단지 선택</span>
+              <span class="cx-hint" id="cx-hint">변경</span>
+              <span class="cx-ar">▾</span>
             </button>
             <div class="cxmenu" id="cx-menu"></div>
           </div>
-          <button type="button" class="chip btn home-btn" id="btn-home" title="홈 대시보드 (전체 단지)">홈</button>
         </div>
         <div class="counts">
           <span class="chip"><span class="dot w"></span>전체 <b id="c-all">–</b></span>
@@ -501,7 +506,7 @@
 
 <script src="config.js?v=4"></script>
 <script src="board-data.js?v=1"></script>
-<script src="ipark-data.js?v=1"></script>
-<script src="app.js?v=14"></script>
+<script src="ipark-data.js?v=2"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
