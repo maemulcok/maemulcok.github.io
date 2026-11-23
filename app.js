@@ -2042,7 +2042,7 @@ async function admRestore(id, btn) {
   }
 }
 
-$('btn-admin').onclick = admOpen;
+$('btn-admin').onclick = function () { if (RO) { roExit(); return; } admOpen(); };
 $('adm-x').onclick = admClose;
 ov4.onclick = admClose;
 document.querySelectorAll('#adm-tabs button').forEach(function (b) {
