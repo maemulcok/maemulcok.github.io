@@ -45,10 +45,13 @@
       <label class="field"><span>아이디 (부동산 상호명)</span>
         <input id="su-id" type="text" autocomplete="username" placeholder="예: 홍길동, 홍길동부동산" maxlength="20" required>
       </label>
+      <label class="field"><span>이메일</span>
+        <input id="su-email" type="email" autocomplete="email" inputmode="email" placeholder="예: name@example.com" maxlength="254" required>
+      </label>
       <label class="field"><span>비밀번호</span>
         <input id="su-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
       </label>
-      <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다. 비밀번호는 <b>6자 이상</b>.</span></div>
+      <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다. <b>이메일은 비밀번호를 잊었을 때 재설정 메일을 받을 주소</b>입니다(필수). 비밀번호는 <b>6자 이상</b>.</span></div>
       <label class="consent" for="su-consent">
         <input type="checkbox" id="su-consent">
         <span>서비스 이용약관 및 <b>장애 복구·백업 목적의 데이터 보관</b>, <b>관리자의 열람·복구</b>에 동의합니다. (필수)</span>
@@ -61,10 +64,10 @@
 
     <!-- 비밀번호 찾기 -->
     <form class="auth-form" id="form-reset" hidden>
-      <label class="field"><span>아이디</span>
-        <input id="rs-id" type="text" autocomplete="username" placeholder="예: 홍길동부동산" required>
+      <label class="field"><span>아이디 또는 이메일</span>
+        <input id="rs-id" type="text" autocomplete="username" placeholder="예: 홍길동부동산 또는 name@example.com" required>
       </label>
-      <p class="auth-note" style="margin:2px 0 10px">가입한 <b>아이디</b>를 넣어 주세요. 아이디 계정은 운영자에게 초기화를 요청할 수 있습니다.</p>
+      <p class="auth-note" style="margin:2px 0 10px">가입할 때 적은 <b>아이디</b>나 <b>이메일</b>을 넣어 주세요. 등록된 이메일로 새 비밀번호를 정하는 링크를 보내 드립니다.</p>
       <div class="auth-msg" id="rs-msg"></div>
       <button class="auth-go" type="submit" id="rs-go">재설정 메일 받기</button>
       <button class="auth-link" type="button" data-tab="login">로그인으로 돌아가기</button>
@@ -314,6 +317,6 @@
 
 <script src="config.js?v=1"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

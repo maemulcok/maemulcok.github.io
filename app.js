@@ -1042,6 +1042,13 @@ $('pending-out').onclick = function () { signOut(); };
    인증 — 화면
    ============================================================ */
 var authTabs = ['login', 'signup', 'reset', 'newpw'];
+/* 비밀번호 재설정 링크로 들어온 상태인지 (새 비밀번호 화면을 먼저 보여 준다) */
+var recovering = false;
+function clearRecoveryHash() {
+  if (/access_token|type=recovery|error_description/.test(location.hash || '')) {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+}
 function showAuth(tab, msg, ok) {
   $('boot').hidden = true;
   $('app').hidden = true;
@@ -1088,23 +1095,58 @@ function idToEmail(raw) {
 function isIdEmail(mail) {
   return String(mail || '').toLowerCase().slice(-(ID_DOMAIN.length + 1)) === '@' + ID_DOMAIN;
 }
-/* '아이디' 입력값 → Supabase 에 넘길 이메일. @ 가 있으면 관리자 이메일로 본다. */
-function loginEmail(raw) {
-  var v = str(raw);
-  return v.indexOf('@') >= 0 ? v : idToEmail(v);
+/* 이메일 형식 확인 (가입·비밀번호 찾기) */
+function emailValid(v) {
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(String(v == null ? '' : v).trim());
+}
+/* 화면에 주소를 그대로 쓰지 않고 가린다 (재설정 메일을 어느 주소로 보냈는지만 확인) */
+function maskEmail(mail) {
+  var s = String(mail || ''), at = s.indexOf('@');
+  if (at < 1) return s;
+  return s.slice(0, Math.min(2, at)) + '***' + s.slice(at);
+}
+/* 아이디 → 그 계정의 실제 로그인 이메일 (profiles.username 조회 RPC).
+   이메일로 가입한 계정은 실제 주소, 아이디만 있던 예전 계정은 내부 주소가 온다. */
+async function resolveEmail(username) {
+  if (!LIVE) {
+    var k = demoFind(username);
+    return k ? (demoData().users[k].email || '') : '';
+  }
+  try {
+    var r = await S.sb.rpc('lookup_login_email', { p: username });
+    if (r.error) {
+      console.warn('lookup_login_email', r.error);
+      return idToEmail(username);   /* RPC 가 없을 때 예전 방식으로 물러선다 */
+    }
+    return r.data ? String(r.data) : '';
+  } catch (ex) {
+    console.warn(ex);
+    return idToEmail(username);
+  }
 }
 
 function authErr(e) {
   var m = String((e && (e.message || e.error_description)) || e || '');
   if (/Invalid login credentials/i.test(m)) return '아이디 또는 비밀번호가 맞지 않습니다.';
   if (/Email not confirmed/i.test(m)) return '메일함의 확인 링크를 먼저 눌러 주세요.';
-  if (/already registered|already been registered|user already exists/i.test(m)) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
+  if (/already registered|already been registered|user already exists/i.test(m)) return '이미 가입된 이메일입니다. 다른 이메일로 가입하거나, 이 이메일로 로그인해 주세요.';
   if (/Password should be at least/i.test(m)) return '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.';
   if (/weak_password/i.test(m)) return '비밀번호가 서버 기준에 못 미칩니다. 6자 이상으로 정해 주세요.';
   if (/rate limit|too many/i.test(m)) return '시도가 너무 잦습니다. 잠시 뒤 다시 해 주세요.';
-  if (/Unable to validate email|invalid format|email_address_invalid/i.test(m)) return '아이디를 확인해 주세요. (한글·영문·숫자 2~20자)';
+  if (/Unable to validate email|invalid format|email_address_invalid/i.test(m)) return '이메일 주소를 확인해 주세요. 예: name@example.com';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.';
   return m || '처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.';
+}
+/* 가입 실패 문구 — 이메일 중복과 아이디 중복을 구분해서 알려 준다 */
+function signupErr(e) {
+  var m = String((e && (e.message || e.error_description)) || e || '');
+  if (/already registered|already been registered|user already exists/i.test(m)) {
+    return '이미 가입된 이메일입니다. 다른 이메일로 가입하거나, 이 이메일로 로그인해 주세요.';
+  }
+  if (/duplicate key|profiles_username_key|Database error saving new user/i.test(m)) {
+    return '이미 쓰고 있는 아이디입니다. 다른 아이디로 가입해 주세요.';
+  }
+  return authErr(e);
 }
 
 /* 입력을 고치면 이전 오류 문구를 지운다 */
@@ -1129,33 +1171,43 @@ var DK = 'cls.demo.v1';
 function demoData() { try { return JSON.parse(localStorage.getItem(DK) || '{}') || {}; } catch (e) { return {}; } }
 function demoUsers() { return demoData().users || {}; }
 function demoSave(d) { localStorage.setItem(DK, JSON.stringify(d)); }
-function demoLogin(email, pw, username) {
-  var d = demoData(), key = email.toLowerCase(), u = (d.users || {})[key];
+function demoKey(username) { return 'u:' + idNorm(username); }
+/* 데모에서는 아이디·이메일 둘 다로 계정을 찾는다 */
+function demoFind(idOrEmail) {
+  var users = demoUsers(), v = String(idOrEmail == null ? '' : idOrEmail);
+  if (users[demoKey(v)]) return demoKey(v);
+  var low = v.trim().toLowerCase();
+  for (var key in users) { if ((users[key].email || '').toLowerCase() === low) return key; }
+  return '';
+}
+function demoLogin(identifier, pw) {
+  var d = demoData(), key = demoFind(identifier), u = key ? d.users[key] : null;
   if (!u) return '가입되지 않은 아이디입니다. 회원가입을 먼저 해 주세요.';
   if (u.pw !== pw) return '비밀번호가 맞지 않습니다.';
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, {
-    username: username, agency_name: u.agency, manager_name: u.manager || '', approved: u.approved !== false
+  enterApp({ id: 'demo:' + key, email: u.email || null }, {
+    username: (key.indexOf('u:') === 0 ? key.slice(2) : ''), agency_name: u.agency, manager_name: u.manager || '', approved: u.approved !== false
   });
   return '';
 }
-function demoSignup(email, pw, agency, consent, username) {
+function demoSignup(username, email, pw, agency, consent) {
   var d = demoData(); d.users = d.users || {};
-  var key = email.toLowerCase();
+  var key = demoKey(username);
   if (d.users[key]) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
+  if (demoFind(email)) return '이미 가입된 이메일입니다. 다른 이메일로 가입해 주세요.';
   if (!consent) return '백업·보관 동의에 체크해 주세요.';
-  d.users[key] = { pw: pw, agency: agency, manager: '', approved: true, consentAt: new Date().toISOString() };
+  d.users[key] = { pw: pw, email: email, agency: agency, manager: '', approved: true, consentAt: new Date().toISOString() };
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, { username: username, agency_name: agency, manager_name: '', approved: true });
+  enterApp({ id: 'demo:' + key, email: email }, { username: username, agency_name: agency, manager_name: '', approved: true });
   return '';
 }
 
 $('demo-go').onclick = function () {
   var d = demoData(); d.users = d.users || {};
-  var key = idToEmail('데모');
-  if (!d.users[key]) d.users[key] = { pw: 'demo1234', agency: '데모공인중개사사무소', manager: '체험 계정', approved: true, consentAt: new Date().toISOString() };
+  var key = demoKey('데모');
+  if (!d.users[key]) d.users[key] = { pw: 'demo1234', email: 'demo@example.com', agency: '데모공인중개사사무소', manager: '체험 계정', approved: true, consentAt: new Date().toISOString() };
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: null }, { username: '데모', agency_name: d.users[key].agency, manager_name: d.users[key].manager, approved: true });
+  enterApp({ id: 'demo:' + key, email: d.users[key].email }, { username: '데모', agency_name: d.users[key].agency, manager_name: d.users[key].manager, approved: true });
 };
 
 /* ---------- 로그인 ---------- */
@@ -1164,16 +1216,22 @@ $('form-login').addEventListener('submit', async function (e) {
   var input = str($('li-id').value), pw = $('li-pw').value;
   setMsg('li-msg', '');
   if (!input || !pw) { setMsg('li-msg', '아이디와 비밀번호를 입력해 주세요.'); return; }
-  if (input.indexOf('@') < 0 && !idValid(idNorm(input))) {
+  var byEmail = input.indexOf('@') >= 0;          /* @ 가 있으면 이메일 로그인 */
+  var username = byEmail ? '' : idNorm(input);
+  if (!byEmail && !idValid(username)) {
     setMsg('li-msg', '아이디는 한글·영문·숫자 2~20자입니다.'); return;
   }
-  var email = loginEmail(input);
   $('li-go').disabled = true;
   try {
     if (!LIVE) {
-      var err = demoLogin(email, pw, idNorm(input));
+      var err = demoLogin(byEmail ? input : username, pw);
       if (err) setMsg('li-msg', err);
       return;
+    }
+    var email = input;
+    if (!byEmail) {
+      email = await resolveEmail(username);
+      if (!email) { setMsg('li-msg', '가입되지 않은 아이디입니다. 회원가입을 먼저 해 주세요.'); return; }
     }
     var res = await S.sb.auth.signInWithPassword({ email: email, password: pw });
     if (res.error) { setMsg('li-msg', authErr(res.error)); return; }
@@ -1188,10 +1246,10 @@ $('form-login').addEventListener('submit', async function (e) {
 /* ---------- 회원가입 ---------- */
 $('form-signup').addEventListener('submit', async function (e) {
   e.preventDefault();
-  var raw = str($('su-id').value), pw = $('su-pw').value;
+  var raw = str($('su-id').value), mail = str($('su-email').value), pw = $('su-pw').value;
   var consent = $('su-consent').checked;
   setMsg('su-msg', '');
-  if (!raw || !pw) { setMsg('su-msg', '아이디(상호명)와 비밀번호를 입력해 주세요.'); return; }
+  if (!raw || !mail || !pw) { setMsg('su-msg', '아이디(상호명)·이메일·비밀번호를 모두 입력해 주세요.'); return; }
   if (raw.indexOf('@') >= 0) {
     setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 부동산 상호명을 아이디로 넣어 주세요.');
     $('su-id').focus(); return;
@@ -1201,36 +1259,45 @@ $('form-signup').addEventListener('submit', async function (e) {
     setMsg('su-msg', '아이디(상호명)는 한글·영문·숫자 2~20자로 정해 주세요. (공백·기호는 쓸 수 없습니다)');
     $('su-id').focus(); return;
   }
+  if (!emailValid(mail)) {
+    setMsg('su-msg', '이메일 주소를 확인해 주세요. 예: name@example.com');
+    $('su-email').focus(); return;
+  }
   /* 아이디 = 사무소 이름. 칸에 친 그대로(공백·대소문자 유지) 사무소명으로 보여 준다. */
   var agency = raw.replace(/\s+/g, ' ').trim() || username;
-  var email = idToEmail(username);
-  if (pw.length < 4) { setMsg('su-msg', '비밀번호는 4자 이상으로 정해 주세요.'); return; }
   if (pw.length < 6) { setMsg('su-msg', '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.'); return; }
   if (!consent) { setMsg('su-msg', '이용약관 및 데이터 보관 동의에 체크해 주세요.'); $('su-consent').focus(); return; }
   $('su-go').disabled = true;
   var consentAt = new Date().toISOString();
   try {
     if (!LIVE) {
-      var err = demoSignup(email, pw, agency, consent, username);
+      var err = demoSignup(username, mail, pw, agency, consent);
       if (err) setMsg('su-msg', err);
       return;
     }
+    /* 같은 아이디가 이미 있는지 먼저 묻고 친절하게 알려 준다 */
+    var chk = await S.sb.rpc('username_taken', { p: username });
+    if (!chk.error && chk.data === true) {
+      setMsg('su-msg', '이미 쓰고 있는 아이디입니다. 로그인해 주세요.');
+      $('su-id').focus(); return;
+    }
     var res = await S.sb.auth.signUp({
-      email: email, password: pw,
+      email: mail, password: pw,
       options: {
         emailRedirectTo: siteUrl(),
         data: {
           username: username,
           agency_name: agency, manager_name: '',
+          email: mail,
           consent: 'v1', consent_at: consentAt
         }
       }
     });
-    if (res.error) { setMsg('su-msg', authErr(res.error)); return; }
+    if (res.error) { setMsg('su-msg', signupErr(res.error)); return; }
     if (res.data.session) {
       await enterApp(res.data.user);
     } else {
-      setMsg('su-msg', '가입 메일을 보냈습니다. 메일함에서 확인 링크를 누른 뒤 로그인해 주세요.', true);
+      setMsg('su-msg', '가입 확인 메일을 보냈습니다. 메일함에서 확인 링크를 누른 뒤 로그인해 주세요.', true);
       $('form-signup').reset();
     }
   } catch (ex) {
@@ -1243,19 +1310,28 @@ $('form-signup').addEventListener('submit', async function (e) {
 /* ---------- 비밀번호 찾기 ---------- */
 $('form-reset').addEventListener('submit', async function (e) {
   e.preventDefault();
-  var email = str($('rs-id').value);
+  var input = str($('rs-id').value);
   setMsg('rs-msg', '');
-  if (!email) { setMsg('rs-msg', '아이디를 입력해 주세요.'); return; }
-  if (email.indexOf('@') < 0) {
-    setMsg('rs-msg', '아이디 계정은 운영자에게 비밀번호 초기화를 요청해 주세요.', true);
-    return;
-  }
+  if (!input) { setMsg('rs-msg', '아이디 또는 이메일을 입력해 주세요.'); return; }
+  var byEmail = input.indexOf('@') >= 0;
+  var username = byEmail ? '' : idNorm(input);
+  if (!byEmail && !idValid(username)) { setMsg('rs-msg', '아이디는 한글·영문·숫자 2~20자입니다.'); return; }
   if (!LIVE) { setMsg('rs-msg', '데모 모드에는 비밀번호 재설정 메일이 없습니다. 새로 가입해 주세요.', true); return; }
   $('rs-go').disabled = true;
   try {
+    var email = input;
+    if (!byEmail) {
+      email = await resolveEmail(username);
+      if (!email) { setMsg('rs-msg', '가입되지 않은 아이디입니다. 아이디를 확인해 주세요.'); return; }
+    }
+    if (!emailValid(email)) { setMsg('rs-msg', '이메일 주소를 확인해 주세요. 예: name@example.com'); return; }
+    if (isIdEmail(email)) {
+      setMsg('rs-msg', '이 계정은 등록된 이메일이 없습니다. 운영자에게 비밀번호 초기화를 요청해 주세요.', true);
+      return;
+    }
     var res = await S.sb.auth.resetPasswordForEmail(email, { redirectTo: siteUrl() });
     if (res.error) { setMsg('rs-msg', authErr(res.error)); return; }
-    setMsg('rs-msg', '재설정 메일을 보냈습니다. 메일함의 링크를 눌러 새 비밀번호를 정해 주세요.', true);
+    setMsg('rs-msg', '재설정 메일을 ' + maskEmail(email) + ' 로 보냈습니다. 메일함의 링크를 눌러 새 비밀번호를 정해 주세요.', true);
   } catch (ex) {
     setMsg('rs-msg', authErr(ex));
   } finally {
@@ -1276,6 +1352,8 @@ $('form-newpw').addEventListener('submit', async function (e) {
     var res = await S.sb.auth.updateUser({ password: a });
     if (res.error) { setMsg('np-msg', authErr(res.error)); return; }
     setMsg('np-msg', '비밀번호를 바꿨습니다. 잠시 뒤 매물장으로 들어갑니다.', true);
+    recovering = false;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e2) {}
     var u = (await S.sb.auth.getUser()).data.user;
     if (u) await enterApp(u);
   } catch (ex) {
@@ -1806,7 +1884,7 @@ function boot() {
     var d = demoData();
     if (d.session && d.users && d.users[d.session]) {
       var u = d.users[d.session];
-      enterApp({ id: 'demo:' + d.session, email: d.session }, { agency_name: u.agency, manager_name: u.manager, approved: u.approved !== false });
+      enterApp({ id: 'demo:' + d.session, email: u.email || null }, { agency_name: u.agency, manager_name: u.manager, approved: u.approved !== false });
     } else {
       showAuth('login');
     }
@@ -1819,11 +1897,24 @@ function boot() {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
     S.sb.auth.onAuthStateChange(function (event, session) {
-      if (event === 'PASSWORD_RECOVERY') { showAuth('newpw'); return; }
+      if (event === 'PASSWORD_RECOVERY') {
+        recovering = true;
+        showAuth('newpw');
+        clearRecoveryHash();
+        return;
+      }
       if (event === 'SIGNED_OUT') { if (S.ready) signOut(); }
     });
+    var recoveryHash = /[#&?]type=recovery/.test(location.hash || '');
     var got = await S.sb.auth.getSession();
     var session = got.data && got.data.session;
+    /* 비밀번호 재설정 링크로 들어온 경우에는 매물장보다 새 비밀번호를 먼저 받는다 */
+    if (recovering || recoveryHash) {
+      recovering = true;
+      clearRecoveryHash();
+      showAuth('newpw');
+      return;
+    }
     if (session && session.user) enterApp(session.user);
     else {
       var hash = location.hash || '';
