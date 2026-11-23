@@ -1,5 +1,5 @@
 /* ============================================================
-   센텀르엘 (매물) — 공용 스타일
+   매물콕 — 공용 스타일
    PC: 101~106동 한 줄 배치표 · 호버 툴팁 · 옆에 뜨는 메모장
    모바일: 101→106동 세로 스크롤 · 1~6호 한 화면 · 하단 시트 메모장
    ============================================================ */
@@ -32,40 +32,97 @@ button{font-family:inherit}
 .num, b, td, .chip b{font-variant-numeric:tabular-nums}
 
 /* ============================================================
-   시작 · 로그인 · 회원가입
+   시작 · 로그인 · 회원가입 — 모던 화이트 좌우 분할
+   PC: 왼쪽 55% 브랜드·장점 카드 / 오른쪽 45% 로그인 카드
+   모바일: 브랜드 헤더 → 로그인 카드 → 장점 카드
    ============================================================ */
 .boot{position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-      background:#f3f5f7; color:#94a3b8; font-size:13px; font-weight:700; z-index:200}
-.auth{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:26px 16px 40px;
-      background:radial-gradient(120% 100% at 50% 0%, #eef3f8 0%, #f3f5f7 45%, #e7edf4 100%)}
-.auth-card{width:min(420px,100%); background:#fff; border:1px solid #dde3ea; border-radius:18px;
-           box-shadow:0 18px 44px rgba(15,23,42,.13), 0 2px 6px rgba(15,23,42,.05); padding:24px 22px 20px}
-.auth-logo{display:flex; align-items:center; gap:9px; margin-bottom:4px}
-.auth-mark{width:34px; height:34px; border-radius:10px; background:#eef3f8; border:1px solid #e2e9f1;
-           display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#3d6f78}
-.auth-card h1{margin:0; font-size:17px; font-weight:800; letter-spacing:-.6px}
-.auth-card h1 small{display:block; font-size:11px; font-weight:600; color:#8b98a6; letter-spacing:0; margin-top:1px}
-.auth-tabs{display:flex; gap:4px; background:#f1f5f9; border-radius:10px; padding:3px; margin:16px 0 14px}
-.auth-tabs button{flex:1 1 0; border:0; background:transparent; border-radius:8px; padding:8px 4px;
-                  font-size:12.5px; font-weight:800; color:#64748b; cursor:pointer; letter-spacing:-.2px}
-.auth-tabs button.on{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(15,23,42,.12)}
-.auth-form{display:flex; flex-direction:column; gap:9px}
-.field{display:flex; flex-direction:column; gap:3px}
-.field span{font-size:11px; font-weight:800; color:#7b8794; letter-spacing:-.2px}
-.field input{width:100%; border:1px solid #d7dde4; border-radius:10px; background:#fbfcfd;
-             padding:10px 11px; font-size:13.5px; font-weight:600; color:var(--ink); outline:none; font-family:inherit}
-.field input:focus{border-color:#8fa4b8; background:#fff; box-shadow:0 0 0 3px rgba(148,163,184,.16)}
-.field input::placeholder{color:#b6c0cb; font-weight:500}
-.field .hint{font-size:10.5px; font-weight:600; color:#9aa6b2; letter-spacing:-.2px}
+      background:#f7f9fc; color:#94a3b8; font-size:13px; font-weight:700; z-index:200}
+
+.auth{min-height:100vh; display:flex; background:#fff}
+
+/* ── 왼쪽 ───────────────────────────────── */
+.auth-left{position:relative; width:55%; padding:46px 54px 38px; overflow:hidden;
+           display:flex; flex-direction:column;
+           background:linear-gradient(180deg,#ffffff 0%,#fbfcfe 46%,#f7f9fc 100%)}
+.auth-left::before{content:''; position:absolute; width:760px; height:760px; left:-320px; top:-380px; border-radius:50%;
+             background:radial-gradient(circle, rgba(37,99,235,.075), rgba(37,99,235,0) 64%)}
+.auth-left::after{content:''; position:absolute; right:-160px; bottom:-220px; width:520px; height:520px; border-radius:50%;
+            background:radial-gradient(circle, rgba(15,23,42,.045), rgba(15,23,42,0) 68%)}
+.auth-left > *{position:relative; z-index:1}
+
+.auth-brand{display:flex; align-items:center; gap:11px}
+.auth-mark{width:36px; height:36px; border-radius:10px; display:block; flex:0 0 auto;
+           box-shadow:0 6px 15px -7px rgba(15,23,42,.45)}
+.auth-name{font-size:18.5px; font-weight:800; letter-spacing:-.7px; color:#0f172a}
+.auth-bar{width:1px; height:11px; background:#d8e0ea; display:block}
+.auth-tag{font-size:11.5px; font-weight:600; color:#8b98a8; letter-spacing:-.2px}
+
+.auth-hero{margin-top:44px}
+.auth-hero h1{margin:0; font-size:39px; line-height:1.32; font-weight:800; letter-spacing:-2.1px; color:#0f172a}
+.auth-hero h1 em{font-style:normal; color:#1d4ed8}
+.auth-lede{margin:15px 0 0; font-size:14px; line-height:1.68; color:#5d6b7e; letter-spacing:-.32px}
+
+.auth-benefits{margin-top:40px}
+.auth-sec{margin:0; font-size:11px; font-weight:700; color:#93a1b2; letter-spacing:-.1px;
+          display:flex; align-items:center; gap:7px}
+.auth-sec::before{content:''; width:4px; height:4px; border-radius:1px; background:#1d4ed8; display:block}
+.auth-cards{margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:15px}
+.bc{position:relative; background:#fff; border:1px solid #e6ebf2; border-radius:14px;
+    padding:21px 21px 20px; min-height:172px; display:flex; flex-direction:column;
+    box-shadow:0 1px 2px rgba(15,23,42,.035), 0 14px 30px -26px rgba(15,23,42,.35)}
+.bc-ico{width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+        background:#f2f6fd; border:1px solid #e2ebfa; margin-bottom:14px}
+.bc-ico svg{width:16px; height:16px; stroke:#1d4ed8; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.bc-t{display:block; font-size:14.5px; font-weight:800; color:#0f172a; letter-spacing:-.5px; line-height:1.35}
+.bc p{margin:7px 0 0; font-size:12px; line-height:1.62; color:#66768a; letter-spacing:-.22px}
+.bc p strong{color:#334155; font-weight:700}
+.bc-pips{display:flex; flex-wrap:wrap; gap:5px 9px; margin-top:9px}
+.pip{display:flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:#7b899c; letter-spacing:-.1px}
+.pip i{width:8px; height:8px; border-radius:2.5px; display:block; box-shadow:inset 0 0 0 1px rgba(15,23,42,.07)}
+
+/* ── 오른쪽 ─────────────────────────────── */
+.auth-right{position:relative; width:45%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+            padding:40px 24px; background:#f7f9fc; border-left:1px solid #e9eef5}
+.auth-right::before{content:''; position:absolute; inset:0; pointer-events:none;
+             background:radial-gradient(760px 480px at 52% 8%, #ffffff 0%, rgba(255,255,255,0) 74%)}
+.auth-card{position:relative; width:min(404px,100%); background:#fff; border:1px solid #e8edf4; border-radius:20px;
+           padding:30px 32px 26px;
+           box-shadow:0 30px 70px -38px rgba(15,23,42,.30), 0 1px 3px rgba(15,23,42,.04), 0 0 0 6px rgba(255,255,255,.55)}
+.auth-cardbrand{display:flex; align-items:center; gap:8px; margin-bottom:16px}
+.auth-cardbrand img{width:24px; height:24px; border-radius:8px; display:block;
+                    box-shadow:0 4px 10px -6px rgba(15,23,42,.5)}
+.auth-cardbrand b{font-size:13.5px; font-weight:800; letter-spacing:-.45px; color:#0f172a}
+.auth-cardbrand span{font-size:10.5px; font-weight:600; color:#93a1b3; letter-spacing:-.1px}
+.auth-h{margin:0; font-size:24px; font-weight:800; letter-spacing:-1.2px; color:#0f172a}
+.auth-copy{position:relative; margin:16px 0 0; font-size:10px; color:#b0bccb; letter-spacing:0}
+
+.auth-tabs{display:flex; gap:3px; background:#f3f6fa; border-radius:11px; padding:3px; margin:16px 0 18px}
+.auth-tabs button{flex:1 1 0; border:0; background:transparent; border-radius:9px; padding:9px 4px;
+                  font-size:12.5px; font-weight:800; color:#8494a8; cursor:pointer; letter-spacing:-.2px}
+.auth-tabs button.on{background:#fff; color:#0f172a; box-shadow:0 1px 2px rgba(15,23,42,.10), 0 0 0 1px rgba(15,23,42,.035)}
+
+.auth-form{display:flex; flex-direction:column; gap:12px}
+.field{display:flex; flex-direction:column; gap:6px}
+.field > span{font-size:11px; font-weight:800; color:#7c8998; letter-spacing:-.1px}
+.field input{width:100%; height:46px; border:1px solid #e1e8f0; border-radius:11px; background:#fbfcfe;
+             padding:0 14px; font-size:13.5px; font-weight:600; color:#16233a; outline:none; font-family:inherit;
+             letter-spacing:-.2px}
+.field input:focus{border-color:#93b4f0; background:#fff; box-shadow:0 0 0 3.5px rgba(37,99,235,.11)}
+.field input::placeholder{color:#a6b3c2; font-weight:500}
+.field .hint{font-size:10.5px; font-weight:600; color:#8b98a8; letter-spacing:-.2px; line-height:1.65}
+.field .hint b{color:#64748b; font-weight:800}
 .two{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-.auth-go{border:0; border-radius:10px; background:var(--accent); color:#fff; font-size:13.5px; font-weight:800;
-         padding:11px 10px; cursor:pointer; margin-top:3px}
-.auth-go:hover{background:#111827}
+
+.auth-go{border:0; border-radius:11px; height:50px; background:linear-gradient(180deg,#3b78f5 0%,#1f5bd8 100%);
+         color:#fff; font-size:14.5px; font-weight:800; letter-spacing:-.35px; cursor:pointer; margin-top:2px;
+         box-shadow:0 12px 24px -14px rgba(31,91,216,.75)}
+.auth-go:hover{background:linear-gradient(180deg,#3169e0 0%,#1a4fbf 100%)}
 .auth-go:active{transform:translateY(1px)}
 .auth-go[disabled]{opacity:.55; cursor:default}
 .auth-link{border:0; background:none; padding:0; font-size:11.5px; font-weight:700; color:#64748b;
-           border-bottom:1px dotted #c3ccd6; cursor:pointer; align-self:center; margin-top:2px}
-.auth-link:hover{color:var(--ink)}
+           border-bottom:1px dotted #c3ccd6; cursor:pointer; align-self:center; margin-top:4px}
+.auth-link:hover{color:#0f172a}
 .auth-msg{min-height:16px; font-size:11.5px; font-weight:700; color:#b91c1c; line-height:1.45}
 .auth-msg.ok{color:#15803d}
 .auth-sep{display:flex; align-items:center; gap:8px; margin:14px 0 10px; color:#a9b4bf; font-size:10.5px; font-weight:700}
@@ -73,12 +130,14 @@ button{font-family:inherit}
 .auth-demo{width:100%; border:1px solid #dbe3ec; background:#f8fbff; color:#1e3a5f; border-radius:10px;
            padding:10px; font-size:12.5px; font-weight:800; cursor:pointer}
 .auth-demo:hover{background:#eff6ff}
-.auth-note{margin:12px 0 0; font-size:10.5px; line-height:1.6; color:#9aa6b2; font-weight:600; letter-spacing:-.2px}
+.auth-note{margin:12px 0 0; font-size:10.5px; line-height:1.65; color:#9aa6b2; font-weight:600; letter-spacing:-.2px}
 .auth-note b{color:#64748b}
+#auth-foot{margin-top:16px; padding-top:14px; border-top:1px dashed #e9eef4}
 .consent{display:flex; align-items:flex-start; gap:8px; margin-top:2px; padding:9px 10px; background:#f8fafc;
          border:1px solid #e5eaf0; border-radius:10px; font-size:11.5px; font-weight:700; color:#475569;
          line-height:1.5; cursor:pointer; letter-spacing:-.2px}
-.consent input{flex:0 0 auto; width:16px; height:16px; margin:1px 0 0; accent-color:#1f2937; cursor:pointer}
+.consent span{word-break:keep-all}
+.consent input{flex:0 0 auto; width:16px; height:16px; margin:1px 0 0; accent-color:#1f5bd8; cursor:pointer}
 .consent b{color:#0f172a; font-weight:800}
 .consent.on{border-color:#c7d6e6; background:#f2f7fd}
 .auth-more{align-self:flex-start; border:0; background:none; padding:0; margin:-4px 0 0 2px; font-size:10.5px;
@@ -86,6 +145,37 @@ button{font-family:inherit}
 .auth-more:hover{color:#1f2937}
 .consent-dlg{width:min(480px,92vw)}
 .consent-dlg .consent-fine{margin:0 0 10px; font-size:11px; line-height:1.6; color:#94a3b8; font-weight:600}
+
+/* ── 모바일: 브랜드 헤더 → 로그인 카드 → 장점 카드 ── */
+@media (max-width: 980px){
+  .auth{display:flex; flex-direction:column; min-height:100vh; background:#fff}
+  .auth-left{display:contents}
+  .auth-left::before, .auth-left::after{display:none; content:none}
+  .auth-brand{order:1; padding:20px 18px 0; gap:9px}
+  .auth-mark{width:30px; height:30px; border-radius:9px}
+  .auth-name{font-size:16px}
+  .auth-bar{height:10px}
+  .auth-tag{font-size:10.5px}
+  .auth-right{order:2; width:100%; border-left:0; background:#fff; padding:14px 14px 0;
+              display:flex; align-items:stretch; justify-content:flex-start}
+  .auth-right::before{display:none}
+  .auth-card{width:100%; padding:20px 18px 20px; border-radius:16px;
+             box-shadow:0 16px 36px -26px rgba(15,23,42,.30), 0 1px 3px rgba(15,23,42,.05)}
+  .auth-copy{display:none}
+  .auth-h{font-size:20px; letter-spacing:-1px}
+  .auth-hero{order:3; margin:0; padding:28px 18px 0}
+  .auth-hero h1{font-size:22px; line-height:1.38; letter-spacing:-1.1px}
+  .auth-lede{display:none}
+  .auth-benefits{order:4; margin:0; padding:20px 18px 34px}
+  .auth-cards{grid-template-columns:1fr 1fr; gap:10px; margin-top:10px}
+  .bc{min-height:0; padding:15px 13px 14px; border-radius:12px}
+  .bc-ico{width:30px; height:30px; border-radius:9px; margin-bottom:10px}
+  .bc-ico svg{width:14px; height:14px}
+  .bc-t{font-size:12.5px; letter-spacing:-.4px}
+  .bc p{font-size:11px; line-height:1.55; margin-top:5px}
+  .bc-pips{gap:3px 7px; margin-top:7px}
+  .pip{font-size:9px}
+}
 
 /* 승인 대기 */
 .pending{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:22px;
@@ -104,7 +194,12 @@ button{font-family:inherit}
      box-shadow:0 1px 4px rgba(15,23,42,.06)}
 .bar-in{max-width:1660px; margin:0 auto; padding:5px 12px 0}
 .row1{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
-.brand{font-weight:800; font-size:13.5px; letter-spacing:-.4px; white-space:nowrap; line-height:1.25}
+.brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; letter-spacing:-.4px;
+       line-height:1.25; min-width:0}
+.brand-mark{width:26px; height:26px; border-radius:8px; display:block; flex:0 0 auto;
+            box-shadow:0 3px 8px -5px rgba(15,23,42,.45)}
+.brand-txt{display:block; min-width:0}
+.brand-name{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .brand .office{color:#1d4ed8}
 .brand .sep{color:#c3ccd6; margin:0 3px; font-weight:600}
 .brand small{display:block; font-weight:500; font-size:10px; color:var(--ink3); letter-spacing:0; margin-top:1px}
@@ -270,7 +365,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
    ============================================================ */
 .ov{position:fixed; inset:0; background:rgba(15,23,42,.32); opacity:0; pointer-events:none; transition:opacity .18s; z-index:70}
 .ov.on{opacity:1; pointer-events:auto}
-.mc{position:fixed; z-index:86; left:0; top:0; width:356px; max-width:calc(100vw - 16px); background:#fff;
+.mc{position:fixed; z-index:86; left:0; top:0; width:560px; max-width:calc(100vw - 16px); background:#fff;
     border:1px solid #dbe1e8; border-radius:12px; box-shadow:0 14px 36px rgba(15,23,42,.22), 0 2px 6px rgba(15,23,42,.08);
     padding:11px 12px 10px; max-height:calc(100vh - 16px); overflow:auto; opacity:0; pointer-events:none;
     transform:translateY(3px); transition:opacity .12s, transform .12s}
@@ -322,7 +417,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-urg i{font-style:normal; font-weight:800}
 .mc-urg:hover{background:#fff5f5}
 .mc-urg[data-on="1"]{background:#fee2e2; border-color:#fca5a5; color:#991b1b}
-.mc textarea{width:100%; min-height:78px; max-height:32vh; resize:vertical; border:1px solid #e2e6ea; border-radius:8px;
+.mc textarea{width:100%; min-height:140px; max-height:40vh; resize:vertical; border:1px solid #e2e6ea; border-radius:8px;
              padding:7px 8px; font-size:12.5px; line-height:1.6; font-family:inherit; outline:none; background:#fff; color:var(--ink)}
 .mc textarea:focus{border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.15)}
 .mc-foot{display:flex; align-items:center; gap:6px; margin-top:7px; min-height:24px}
@@ -346,6 +441,63 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .help .k{display:inline-block; min-width:11px; height:11px; border-radius:3px; border:1px solid rgba(15,23,42,.15);
          vertical-align:-1px; margin-right:3px}
 .help .foot{text-align:right}
+/* 전체 비우기 — 경고 모달 */
+.wipe{position:fixed; z-index:88; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97); width:min(404px,92vw);
+      background:#fff; border-radius:16px; padding:22px 22px 18px;
+      box-shadow:0 24px 60px rgba(15,23,42,.32), 0 2px 6px rgba(15,23,42,.10);
+      opacity:0; pointer-events:none; transition:.18s}
+.wipe.on{opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1)}
+.wipe-h{margin:0 0 8px; font-size:16px; font-weight:800; color:#b91c1c; letter-spacing:-.5px}
+.wipe-p{margin:0; font-size:12.5px; line-height:1.72; color:#475569; font-weight:600; letter-spacing:-.2px}
+.wipe-p b{color:#b91c1c; font-weight:800}
+.wipe-cnt{margin:12px 0 0; padding:9px 11px; background:#fef2f2; border:1px solid #fecaca; border-radius:10px;
+          font-size:12px; font-weight:800; color:#991b1b; letter-spacing:-.2px}
+.wipe-f{display:flex; flex-direction:column; gap:6px; margin-top:14px}
+.wipe-f label{font-size:11px; font-weight:800; color:#7b8794; letter-spacing:-.1px}
+.wipe-f input{width:100%; height:44px; border:1px solid #d7dde4; border-radius:10px; background:#fbfcfd;
+              padding:0 12px; font-size:13.5px; font-weight:600; color:var(--ink); outline:none; font-family:inherit}
+.wipe-f input:focus{border-color:#f0a3a3; background:#fff; box-shadow:0 0 0 3px rgba(220,38,38,.12)}
+.wipe-f input::placeholder{color:#c0c8d2; font-weight:500}
+.wipe-note{margin:10px 0 0; font-size:11px; line-height:1.6; color:#94a3b8; font-weight:600}
+.wipe-msg{min-height:16px; margin:8px 0 0; font-size:11.5px; font-weight:800; color:#b91c1c; line-height:1.45}
+.wipe-btns{display:flex; gap:8px; margin-top:12px}
+.wipe-btns button{flex:1 1 0; height:44px; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit}
+.wipe-cancel{border:1px solid #dfe4ea; background:#fff; color:#475569}
+.wipe-cancel:hover{background:#f8fafc}
+.wipe-del{border:0; background:linear-gradient(180deg,#e5484d 0%,#c62828 100%); color:#fff;
+          box-shadow:0 10px 20px -12px rgba(198,40,40,.9)}
+.wipe-del:hover{background:linear-gradient(180deg,#d93c41 0%,#b31f1f 100%)}
+.wipe-del[disabled]{opacity:.6; cursor:default}
+/* 임대 만기 임박 알림 */
+.exp{position:fixed; z-index:89; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97); width:min(480px,92vw);
+     max-height:84vh; display:flex; flex-direction:column; background:#fff; border-radius:16px; padding:20px 20px 16px;
+     box-shadow:0 24px 60px rgba(15,23,42,.32), 0 2px 6px rgba(15,23,42,.10);
+     opacity:0; pointer-events:none; transition:.18s}
+.exp.on{opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1)}
+.exp-h{margin:0 0 6px; font-size:16px; font-weight:800; letter-spacing:-.5px; color:#0f172a}
+.exp-p{margin:0 0 10px; font-size:12px; line-height:1.65; color:#64748b; font-weight:600; letter-spacing:-.2px}
+.exp-list{overflow:auto; margin:0 -4px; padding:0 4px}
+.exp-it{display:block; width:100%; text-align:left; border:1px solid #e6ebf2; background:#fbfcfe; border-radius:11px;
+        padding:10px 12px; margin-bottom:7px; cursor:pointer; font-family:inherit}
+.exp-it:hover{background:#f4f8ff; border-color:#c7dafb}
+.exp-it:last-child{margin-bottom:0}
+.exp-l1{display:flex; align-items:center; gap:6px}
+.exp-l1 b{font-size:13.5px; font-weight:800; color:#0f172a; letter-spacing:-.3px}
+.exp-tag{font-size:10px; font-weight:800; padding:1px 6px; border-radius:5px; border:1px solid #d7dde3; color:#334155}
+.exp-tag.jeonse{background:var(--jeonse); border-color:#56b6e0}
+.exp-tag.wolse{background:var(--wolse); border-color:#c084fc}
+.exp-d{margin-left:auto; font-size:11px; font-weight:800; color:#b45309; background:#fffbeb;
+       border:1px solid #fde68a; border-radius:999px; padding:1px 8px}
+.exp-d.soon{color:#b91c1c; background:#fef2f2; border-color:#fecaca}
+.exp-l2{margin-top:4px; font-size:11px; line-height:1.55; color:#7c8a9c; font-weight:600; letter-spacing:-.15px}
+.exp-l2 b{color:#475569; font-weight:800}
+.exp-foot{display:flex; gap:8px; margin-top:14px}
+.exp-foot button{flex:1 1 0; height:42px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit}
+.exp-close{border:1px solid #dfe4ea; background:#fff; color:#475569}
+.exp-close:hover{background:#f8fafc}
+.exp-week{border:0; background:linear-gradient(180deg,#3b78f5 0%,#1f5bd8 100%); color:#fff;
+          box-shadow:0 10px 20px -14px rgba(31,91,216,.8)}
+.exp-week:hover{background:linear-gradient(180deg,#3169e0 0%,#1a4fbf 100%)}
 .toast{position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px); background:#111827; color:#fff;
        padding:9px 16px; border-radius:10px; font-size:12.5px; font-weight:700; opacity:0; pointer-events:none;
        transition:.25s; z-index:90; max-width:92vw; text-align:center; line-height:1.45}
@@ -363,7 +515,8 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   body{font-size:12.5px}
   .bar-in{padding:4px 9px 0}
   .row1{gap:7px}
-  .brand{font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:calc(100% - 110px)}
+  .brand{font-size:12.5px; max-width:calc(100% - 110px); min-width:0}
+  .brand-mark{width:22px; height:22px; border-radius:7px}
   .brand small{display:none}
   .counts{order:3; width:100%; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
   .counts::-webkit-scrollbar{display:none}

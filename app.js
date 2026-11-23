@@ -1,5 +1,5 @@
 /* ============================================================
-   센텀르엘 (매물) — 멀티유저 매물장
+   매물콕 — 멀티유저 매물장
    - 로그인한 계정의 매물만 조회·수정 (Supabase RLS)
    - Supabase 미연결 시 '데모 모드' (이 브라우저에만 저장)
    ============================================================ */
@@ -35,7 +35,7 @@ var ST_NAME = { none: '미확인', sale: '매매', jeonse: '전세', wolse: '월
 var ST_COLOR = { none: '#ffffff', sale: '#FEF08A', jeonse: '#BAE6FD', wolse: '#E9D5FF', done: '#FCA5A5' };
 var ST_BORDER = { none: '#b9c2cc', sale: '#d9b421', jeonse: '#56b6e0', wolse: '#c084fc', done: '#e88' };
 var URG_RE = /급내|급매/;
-var FIELDS = ['price', 'owner', 'tenant', 'phone'];
+var FIELDS = ['price', 'owner', 'tenant', 'phone', 'tphone', 'end'];
 
 var COARSE = (function () { try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
 var MQ_NARROW = window.matchMedia('(max-width: 900px)');
@@ -47,7 +47,7 @@ var S = {
   sb: null,
   user: null,          // {id, email}
   profile: null,       // {agency_name, manager_name, approved}
-  notes: {},           // key -> {s, price, owner, tenant, phone, memo, urgent, ut}
+  notes: {},           // key -> {s, price, owner, tenant, phone, tphone, end, memo, urgent, ut}
   pending: new Set(),
   chan: null,
   ready: false
@@ -103,7 +103,7 @@ var IDX = new Map(), LINE_TYPE = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = BOARD.
 function stateOf(k) { var n = S.notes[k]; return n ? cleanState(n.s) : 'none'; }
 function memoOf(k) { var n = S.notes[k]; return n && n.memo ? n.memo : ''; }
 function hasInfoNote(n) {
-  return !!(n && (str(n.memo) || str(n.price) || str(n.owner) || str(n.tenant) || str(n.phone) || n.urgent));
+  return !!(n && (str(n.memo) || str(n.price) || str(n.owner) || str(n.tenant) || str(n.phone) || str(n.tphone) || str(n.end) || n.urgent));
 }
 function hasInfo(k) {
   return hasInfoNote(S.notes[k]);
@@ -120,10 +120,12 @@ function isUrgent(k) {
 function fieldText(k) {
   var n = S.notes[k]; if (!n) return '';
   var st = cleanState(n.s), rental = (st === 'jeonse' || st === 'wolse'), parts = [];
-  if (str(n.price)) parts.push((st === 'sale' ? '매매가' : rental ? '보증금·월세' : '금액') + ' P ' + str(n.price));
-  if (str(n.owner)) parts.push((rental ? '임대인' : '소유주') + ' ' + str(n.owner));
+  if (str(n.price)) parts.push((st === 'sale' ? '매매가 P ' : rental ? '보증금·월세 ' : '금액 ') + str(n.price));
+  if (str(n.owner)) parts.push((rental ? '임대인 ' : '소유주 ') + str(n.owner));
+  if (str(n.phone)) parts.push((rental ? '임대인 연락처 ' : '연락처 ') + str(n.phone));
   if (str(n.tenant)) parts.push('임차인 ' + str(n.tenant));
-  if (str(n.phone)) parts.push('연락처 ' + str(n.phone));
+  if (str(n.tphone)) parts.push('임차인 연락처 ' + str(n.tphone));
+  if (str(n.end)) parts.push('만기 ' + str(n.end));
   return parts.join(' · ');
 }
 
@@ -138,6 +140,8 @@ function noteToRow(k, n) {
     price: str(n.price) || null,
     owner_name: str(n.owner) || null,
     tenant_name: str(n.tenant) || null,
+    tenant_phone: str(n.tphone) || null,
+    lease_end_date: str(n.end) || null,
     phone: str(n.phone) || null,
     memo: str(n.memo) || null,
     urgent: !!n.urgent
@@ -149,6 +153,8 @@ function rowToNote(r) {
     price: str(r.price),
     owner: str(r.owner_name),
     tenant: str(r.tenant_name),
+    tphone: str(r.tenant_phone),
+    end: str(r.lease_end_date).slice(0, 10),
     phone: str(r.phone),
     memo: str(r.memo),
     urgent: r.urgent ? 1 : 0,
@@ -565,7 +571,7 @@ var mc = $('mc'), ov = $('ov');
 var mcHo = $('mc-ho'), mcType = $('mc-type'), mcPrice = $('mc-price'), mcGy = $('mc-gy'),
     mcJn = $('mc-jn'), mcGye = $('mc-gye'), mcMemo = $('mc-memo'), mcSaved = $('mc-saved'),
     mcStat = $('mc-stat'), mcFields = $('mc-fields'), mcUrg = $('mc-urg');
-var mcIn = { price: $('mc-price-in'), owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant') };
+var mcIn = { price: $('mc-price-in'), owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant'), tphone: $('mc-tphone'), end: $('mc-end') };
 
 var cur = null, curTd = null, selTd = null, curBase = '', saveT = null, justOpened = false, joT = null, posT = null;
 
@@ -615,7 +621,7 @@ function applyROView() {
 function syncFieldUI(st) {
   var rental = (st === 'jeonse' || st === 'wolse');
   mcFields.classList.toggle('rental', rental);
-  $('mc-lb-price').textContent = st === 'sale' ? '매매가 · P' : st === 'jeonse' ? '보증금 · P' : st === 'wolse' ? '보증금 · 월세' : '금액 · P';
+  $('mc-lb-price').textContent = st === 'sale' ? '매매가 · P' : st === 'jeonse' ? '보증금' : st === 'wolse' ? '보증금 · 월세' : '금액';
   $('mc-lb-owner').textContent = rental ? '임대인' : '소유주';
   $('mc-lb-phone').textContent = rental ? '임대인 연락처' : '연락처';
   if (cur && !isNarrow()) requestAnimationFrame(placeCard);
@@ -699,7 +705,7 @@ function writeNote(force) {
   var txt = mcMemo.value, fld = readFields();
   var n = S.notes[cur] || { s: 'none' };
   n.memo = txt; n.price = fld.price || ''; n.owner = fld.owner || '';
-  n.phone = fld.phone || ''; n.tenant = fld.tenant || '';
+  n.phone = fld.phone || ''; n.tenant = fld.tenant || ''; n.tphone = fld.tphone || ''; n.end = fld.end || '';
   if (isEmpty(n) && stateOf(cur) === 'none' && !n.urgent) {
     delete S.notes[cur];
   } else {
@@ -927,16 +933,14 @@ function normNote(raw) {
     owner: str(raw.owner),
     tenant: str(raw.tenant),
     phone: str(raw.phone),
+    tphone: str(raw.tphone != null ? raw.tphone : raw.tenantPhone),
+    end: str(raw.end || raw.leaseEnd || raw.lease_end_date).slice(0, 10),
     memo: str(raw.memo != null ? raw.memo : raw.m),
     urgent: raw.urgent ? 1 : 0,
     ut: +raw.ut || 0
   };
   /* 예전 매물장(단일 사용자판) 백업 읽기 */
   if (!n.phone && raw.ownerPhone) n.phone = str(raw.ownerPhone);
-  if (raw.tenantPhone) {
-    var t = '※ 임차인 연락처: ' + str(raw.tenantPhone);
-    n.memo = n.memo ? n.memo + '\n' + t : t;
-  }
   return isEmpty(n) ? null : n;
 }
 
@@ -980,20 +984,142 @@ if ($fileIn) $fileIn.addEventListener('change', function (e) {
   r.readAsText(f, 'utf-8');
 });
 
-$('btn-reset').onclick = async function () {
+/* ============================================================
+   전체 비우기 — 경고 모달 + 비밀번호 재확인
+   ============================================================ */
+var wipeEl = $('wipe'), ov5 = $('ov5');
+function wipeMsg(t) { var el = $('wipe-msg'); if (el) el.textContent = t || ''; }
+function wipeOpen(on) {
+  if (!wipeEl) return;
+  wipeEl.classList.toggle('on', !!on);
+  ov5.classList.toggle('on', !!on);
+  if (!on) return;
+  wipeMsg('');
+  var cnt = Object.keys(exportMap()).length;
+  $('wipe-cnt').textContent = '현재 계정에 저장된 매물 ' + cnt.toLocaleString('ko-KR') + '호실';
+  $('wipe-pw').value = '';
+  $('wipe-pw-wrap').hidden = !LIVE;
+  $('wipe-demo').hidden = LIVE;
+  var go = $('wipe-go'); go.disabled = false; go.textContent = '전체 삭제';
+  if (LIVE) setTimeout(function () { try { $('wipe-pw').focus(); } catch (e) {} }, 120);
+}
+$('wipe-cancel').onclick = function () { wipeOpen(false); };
+ov5.onclick = function () { wipeOpen(false); };
+$('wipe-pw').addEventListener('input', function () { wipeMsg(''); });
+$('wipe-pw').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); $('wipe-go').click(); }
+});
+
+$('btn-reset').onclick = function () {
   if (RO) return;
   if (!Object.keys(exportMap()).length) { toast('비울 매물이 없습니다.'); return; }
-  if (!confirm('내 계정에 저장된 매물 기록을 모두 지웁니다.\n되돌릴 수 없습니다. 먼저 JSON으로 백업해 두셨나요?')) return;
+  wipeOpen(true);
+};
+
+$('wipe-go').onclick = async function () {
+  if (RO) return;
+  var btn = $('wipe-go');
+  if (btn.disabled) return;
+  /* 운영 모드: 지금 로그인한 계정의 이메일로 비밀번호를 다시 확인한다 */
+  if (LIVE) {
+    var pw = $('wipe-pw').value;
+    if (!pw) { wipeMsg('비밀번호를 입력해 주세요.'); $('wipe-pw').focus(); return; }
+    var email = (S.user && S.user.email) || '';
+    if (!email) { wipeMsg('계정 정보를 확인하지 못했습니다. 새로고침 후 다시 시도해 주세요.'); return; }
+    btn.disabled = true; btn.textContent = '확인 중…'; wipeMsg('');
+    var ok = false;
+    try {
+      var r = await S.sb.auth.signInWithPassword({ email: email, password: pw });
+      ok = !(r && r.error);
+    } catch (e) { ok = false; }
+    btn.disabled = false; btn.textContent = '전체 삭제';
+    if (!ok) {
+      wipeMsg('비밀번호가 일치하지 않습니다.');
+      try { $('wipe-pw').select(); } catch (e) {}
+      return;
+    }
+  }
+  btn.disabled = true; btn.textContent = '비우는 중…';
   try {
     await Store().removeAll();
     S.notes = {}; S.pending.clear();
     paintAll(); applyFilters(); mirrorNow();
     if (cur) { curBase = curSig(); fillEditor(cur); }
+    wipeOpen(false);
     toast('내 매물을 모두 비웠습니다.');
   } catch (e) {
-    alert('비우지 못했습니다: ' + (e.message || e));
+    wipeMsg('비우지 못했습니다: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = '전체 삭제';
   }
 };
+
+/* ============================================================
+   임대 만기 임박 알림 — 전세·월세 만기 90일 이내(D-0 ~ D-90)
+   ============================================================ */
+var expEl = $('exp'), ov6 = $('ov6');
+var expShownSession = false;
+function dayLeft(iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+  if (!m) return null;
+  var end = new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+  var n = new Date(), today = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  return Math.round((end - today) / 86400000);
+}
+function expKey() { return 'cls.expiry.hide.' + (S.user ? S.user.id : 'anon'); }
+function expHidden() { try { return (+localStorage.getItem(expKey()) || 0) > Date.now(); } catch (e) { return false; } }
+function leaseSoon() {
+  var out = [];
+  Object.keys(S.notes).forEach(function (k) {
+    var n = S.notes[k] || {}, st = cleanState(n.s);
+    if (st !== 'jeonse' && st !== 'wolse') return;
+    var d = dayLeft(n.end);
+    if (d === null || d < 0 || d > 90) return;
+    var u = IDX.get(k); if (!u) return;
+    out.push({ k: k, u: u, st: st, d: d, end: String(n.end).slice(0, 10), n: n });
+  });
+  out.sort(function (a, b) { return a.d - b.d; });
+  return out;
+}
+function expClose() { if (expEl) expEl.classList.remove('on'); if (ov6) ov6.classList.remove('on'); }
+function expItem(it) {
+  var name = it.u.d + '동 ' + hoNum(it.u.f, it.u.h) + '호';
+  var dd = it.d === 0 ? 'D-DAY' : 'D-' + it.d;
+  var cs = [];
+  if (str(it.n.owner)) cs.push('임대인 <b>' + esc(it.n.owner) + '</b>' + (str(it.n.phone) ? ' ' + esc(it.n.phone) : ''));
+  if (str(it.n.tenant)) cs.push('임차인 <b>' + esc(it.n.tenant) + '</b>' + (str(it.n.tphone) ? ' ' + esc(it.n.tphone) : ''));
+  return '<button type="button" class="exp-it" data-k="' + esc(it.k) + '">'
+    + '<span class="exp-l1"><b>' + esc(name) + '</b>'
+    + '<span class="exp-tag ' + it.st + '">' + (ST_NAME[it.st] || '') + '</span>'
+    + '<span class="exp-d' + (it.d <= 30 ? ' soon' : '') + '">' + dd + '</span></span>'
+    + '<span class="exp-l2">만기 <b>' + esc(it.end) + '</b>' + (cs.length ? ' · ' + cs.join(' · ') : '') + '</span>'
+    + '</button>';
+}
+function checkLeaseAlerts() {
+  if (!expEl || RO || expShownSession || expHidden()) return;
+  var list = leaseSoon();
+  if (!list.length) return;
+  expShownSession = true;
+  $('exp-list').innerHTML = list.map(expItem).join('');
+  expEl.classList.add('on'); ov6.classList.add('on');
+}
+if (expEl) {
+  $('exp-close').onclick = expClose;
+  ov6.onclick = expClose;
+  $('exp-week').onclick = function () {
+    try { localStorage.setItem(expKey(), String(Date.now() + 7 * 86400000)); } catch (e) {}
+    expClose();
+    toast('일주일 동안 이 알림을 띄우지 않습니다.');
+  };
+  $('exp-list').addEventListener('click', function (e) {
+    var b = e.target.closest('.exp-it'); if (!b) return;
+    var k = b.dataset.k, td = cellMap.get(k);
+    expClose();
+    if (!td) return;
+    try { td.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e2) { td.scrollIntoView(); }
+    setTimeout(function () { openCard(td); }, 140);
+  });
+}
 
 /* 데모 전용: 연습용 예시 */
 var SAMPLE = [
@@ -1043,7 +1169,7 @@ $('su-consent').addEventListener('change', function () {
 document.addEventListener('keydown', function (e) {
   var t = e.target;
   var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-  if (e.key === 'Escape') { closeCard(); showHelp(false); hideTip(); admClose(); return; }
+  if (e.key === 'Escape') { closeCard(); showHelp(false); hideTip(); admClose(); wipeOpen(false); expClose(); return; }
   if (!S.ready || typing) return;
   if (e.key === '/') { e.preventDefault(); qEl.focus(); return; }
   if (e.key === 'f' || e.key === 'F') { VIEW.zoom = 'fit'; saveView(); applyZoom(); return; }
@@ -1064,6 +1190,7 @@ async function signOut() {
   admClose(); $('btn-admin').hidden = true;
   mc.classList.remove('on'); ov.classList.remove('on'); showHelp(false);
   $('app').hidden = true; $('pending').hidden = true;
+  expShownSession = false; expClose();
   resetAuthForms();
   showAuth('login');
 }
@@ -1094,6 +1221,8 @@ function showAuth(tab, msg, ok) {
     if (f) f.hidden = (t !== tab);
   });
   $('auth-tabs').style.display = (tab === 'reset' || tab === 'newpw') ? 'none' : '';
+  var authH = { login: '로그인', signup: '회원가입', reset: '비밀번호 찾기', newpw: '새 비밀번호' }[tab];
+  if ($('auth-h') && authH) $('auth-h').textContent = authH;
   document.querySelectorAll('#auth-tabs button').forEach(function (b) {
     b.classList.toggle('on', b.dataset.tab === tab);
   });
@@ -1461,7 +1590,7 @@ async function enterApp(user, knownProfile) {
     $('btn-admin').hidden = !admOk();
     if (admOk()) admRefreshCount();
     $('hs-all').textContent = (BOARD.units || []).length.toLocaleString('ko-KR');
-    document.title = office + ' · 센텀르엘 (매물)';
+    document.title = office + ' · 매물콕';
 
     buildBoard();
     S.ready = true;
@@ -1491,6 +1620,8 @@ async function enterApp(user, knownProfile) {
     setGuide();
     if (isNarrow()) setTab(101);
     $('boot').hidden = true;
+    /* 서버 기록을 받은 뒤 만기 임박 알림 (관리자 읽기전용 열람 중에는 띄우지 않는다) */
+    setTimeout(function () { try { checkLeaseAlerts(); } catch (e) {} }, 420);
   } catch (e) {
     console.error(e);
     $('boot').hidden = true;
@@ -1558,7 +1689,7 @@ document.addEventListener('visibilitychange', function () {
    role = 'admin' 인 계정에만 버튼이 보이고, 실제 허용은 서버(RLS)가 판단합니다.
    ============================================================ */
 var ACT_KO = { insert: '등록', update: '수정', delete: '삭제' };
-var F_LBL = { status: '상태', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', urgent: '급매', memo: '메모' };
+var F_LBL = { status: '상태', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', tenant_phone: '임차인 연락처', lease_end_date: '만기일', urgent: '급매', memo: '메모' };
 var admEl = $('adm'), ov4 = $('ov4');
 var adm = { on: false, tab: 'members', members: [], people: {}, logs: [], userLogs: [], cursor: null,
             user: '', action: '', q: '', openUser: null, busy: false, logsLoaded: false };
@@ -1613,7 +1744,7 @@ function admVal(f, v) {
   return cut(v, 40);
 }
 function admFields(d, list) {
-  return (list || ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'memo'])
+  return (list || ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'memo'])
     .filter(function (f) { return admVal(f, d[f]) !== '없음'; });
 }
 function admPlain(d) {
@@ -1628,7 +1759,7 @@ function admSummary(g) {
     return '<em>삭제</em> ' + (admFields(b).map(function (f) { return esc(F_LBL[f] + ' ' + admVal(f, b[f])); }).join(' · ') || '빈 호실');
   }
   var parts = [];
-  ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'urgent', 'memo'].forEach(function (f) {
+  ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'urgent', 'memo'].forEach(function (f) {
     var x = b[f] == null ? '' : String(b[f]), y = a[f] == null ? '' : String(a[f]);
     if (x !== y) parts.push(F_LBL[f] + ' ' + esc(admVal(f, b[f])) + ' <em>→</em> ' + esc(admVal(f, a[f])));
   });
@@ -1784,7 +1915,7 @@ async function admOpenOffice(uid) {
     + '<span class="of-chip">급매 <b>' + cnt.urg + '</b></span>'
     + '<span class="of-chip">기타 <b>' + cnt.none + '</b></span></div>';
   var table = rows.length ? ('<table class="of-table"><thead><tr>'
-    + '<th>호실</th><th>상태</th><th>금액</th><th>소유주</th><th>임차인</th><th>연락처</th><th>메모</th><th>수정</th>'
+    + '<th>호실</th><th>상태</th><th>금액</th><th>소유주</th><th>임차인</th><th>연락처</th><th>임차인 연락처</th><th>만기일</th><th>메모</th><th>수정</th>'
     + '</tr></thead><tbody>' + rows.map(function (r) {
       return '<tr>'
         + '<td class="num-c">' + esc(admUnit(r.unit_key)) + (r.urgent ? ' <span class="al-act delete" style="padding:0 5px">급</span>' : '') + '</td>'
@@ -1793,6 +1924,8 @@ async function admOpenOffice(uid) {
         + '<td>' + esc(str(r.owner_name) || '—') + '</td>'
         + '<td>' + esc(str(r.tenant_name) || '—') + '</td>'
         + '<td>' + esc(str(r.phone) || '—') + '</td>'
+        + '<td>' + esc(str(r.tenant_phone) || '—') + '</td>'
+        + '<td>' + esc(str(r.lease_end_date).slice(0, 10) || '—') + '</td>'
         + '<td class="memo-c">' + esc(cut(r.memo || '', 60) || '—') + '</td>'
         + '<td>' + esc(admWhen(r.updated_at)) + '</td>'
         + '</tr>';
@@ -1885,7 +2018,7 @@ async function admViewBoard(uid, btn) {
   $('btn-reset').hidden = true;
   $('btn-sample').hidden = true;
   $('hd-office').textContent = name;
-  document.title = '👁️ ' + name + ' 배치표 · 센텀르엘 (매물)';
+  document.title = '👁️ ' + name + ' 배치표 · 매물콕';
   document.body.classList.add('ro');
   paintAll(); applyFilters();
   window.scrollTo({ top: 0 });
@@ -1902,7 +2035,7 @@ async function roExit() {
   $('btn-reset').hidden = false;
   document.body.classList.remove('ro');
   if (office) $('hd-office').textContent = office;
-  document.title = (office || '센텀르엘 (매물)') + ' · 센텀르엘 (매물)';
+  document.title = (office || '매물콕') + ' · 매물콕';
   /* 내 배치표로 되돌린다 */
   S.pending.clear();
   S.notes = cachedNotes();
@@ -2021,6 +2154,8 @@ async function admRestore(id, btn) {
         owner_name: str(d.owner_name) || null,
         tenant_name: str(d.tenant_name) || null,
         phone: str(d.phone) || null,
+        tenant_phone: str(d.tenant_phone) || null,
+        lease_end_date: str(d.lease_end_date).slice(0, 10) || null,
         memo: str(d.memo) || null,
         urgent: !!d.urgent
       }, { onConflict: 'user_id,unit_key' });

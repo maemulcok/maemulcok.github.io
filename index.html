@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
-<title>센텀르엘 (매물)</title>
-<link rel="stylesheet" href="app.css?v=6">
+<title>매물콕 · 공인중개사 전용 매물장</title>
+<link rel="icon" type="image/png" href="favicon.png?v=2">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
+<link rel="stylesheet" href="app.css?v=8">
 </head>
 <body>
 
@@ -16,11 +18,63 @@
      로그인 · 회원가입
      ============================================================ -->
 <div class="auth" id="auth" hidden>
-  <div class="auth-card">
-    <div class="auth-logo">
-      <span class="auth-mark">르엘</span>
-      <h1>센텀르엘 (매물)<small>공인중개사 전용 · 동호수 매물 메모장</small></h1>
+
+  <!-- 왼쪽: 브랜드 · 소개 · 장점 카드 (PC 55%) -->
+  <section class="auth-left">
+    <div class="auth-brand">
+      <img class="auth-mark" src="assets/maemulcok-logo.png?v=2" alt="매물콕">
+      <span class="auth-name">매물콕</span>
+      <i class="auth-bar"></i>
+      <span class="auth-tag">공인중개사 전용 매물장</span>
     </div>
+
+    <div class="auth-hero">
+      <h1>전 세대 동호수를 <em>한눈에</em>,<br>중개사 전용 매물장</h1>
+      <p class="auth-lede">엑셀도, 카톡 캡처도 필요 없습니다. 단지 하나를 열면<br>호수부터 계약 조건까지 그 자리에서 정리됩니다.</p>
+    </div>
+
+    <div class="auth-benefits">
+      <p class="auth-sec">이런 점이 편합니다</p>
+      <div class="auth-cards">
+        <div class="bc">
+          <span class="bc-ico"><svg viewBox="0 0 16 16"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx="1.2"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx="1.2"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx="1.2"/><rect x="9.2" y="9.2" width="4.6" height="4.6" rx="1.2"/></svg></span>
+          <b class="bc-t">엑셀·카톡 뒤질 필요 없음</b>
+          <p>호수·타입·분양가·계약금까지 <strong>클릭 한 번에</strong> 즉시 확인</p>
+        </div>
+        <div class="bc">
+          <span class="bc-ico"><svg viewBox="0 0 16 16"><path d="M2.5 4.2h11M2.5 8h11M2.5 11.8h11"/><circle cx="5.6" cy="4.2" r="1.15"/><circle cx="10.4" cy="8" r="1.15"/><circle cx="7.2" cy="11.8" r="1.15"/></svg></span>
+          <b class="bc-t">1초 만에 매물 구분</b>
+          <p>색깔과 <strong>(급)</strong> 표시로 한눈에 보이는 매물 상태</p>
+          <div class="bc-pips">
+            <span class="pip"><i style="background:#FDE68A"></i>매매</span>
+            <span class="pip"><i style="background:#BAE6FD"></i>전세</span>
+            <span class="pip"><i style="background:#DDD6FE"></i>월세</span>
+            <span class="pip"><i style="background:#CBD5E1"></i>보류</span>
+            <span class="pip"><i style="background:#FCA5A5"></i>급매</span>
+          </div>
+        </div>
+        <div class="bc">
+          <span class="bc-ico"><svg viewBox="0 0 16 16"><rect x="1.8" y="2.6" width="8.6" height="6.6" rx="1.3"/><path d="M4.9 12.9h7.3a1.2 1.2 0 0 0 1.2-1.2V6.1"/><path d="M6.1 7.4V5.4M6.1 5.4h-1.3M6.1 5.4h1.3"/></svg></span>
+          <b class="bc-t">현장에서도 그대로</b>
+          <p>사무실 PC에서 적으면 외근 나간 <strong>폰에서도</strong> 실시간 동기화</p>
+        </div>
+        <div class="bc">
+          <span class="bc-ico"><svg viewBox="0 0 16 16"><path d="M2.4 12.6V9.1M6.2 12.6V6.3M10 12.6V3.4M13.8 12.6V8"/></svg></span>
+          <b class="bc-t">주요 단지 계속 확장</b>
+          <p>센텀르엘부터 아크로 라로체까지 인기 단지 <strong>순차 오픈</strong></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 오른쪽: 로그인 · 회원가입 카드 (PC 45%) -->
+  <section class="auth-right">
+  <div class="auth-card">
+    <div class="auth-cardbrand">
+      <img src="assets/maemulcok-logo.png?v=2" alt="">
+      <b>매물콕</b><span>공인중개사 전용</span>
+    </div>
+    <h2 class="auth-h" id="auth-h">로그인</h2>
 
     <div class="auth-tabs" id="auth-tabs">
       <button data-tab="login" class="on">로그인</button>
@@ -37,7 +91,7 @@
       </label>
       <div class="auth-msg" id="li-msg"></div>
       <button class="auth-go" type="submit" id="li-go">로그인</button>
-      <button class="auth-link" type="button" data-tab="reset">비밀번호를 잊으셨나요?</button>
+      <button class="auth-link" type="button" data-tab="reset">비밀번호 찾기</button>
     </form>
 
     <!-- 회원가입 -->
@@ -92,6 +146,8 @@
 
     <p class="auth-note" id="auth-foot">매물 기록은 계정마다 따로 보관됩니다. 같은 계정으로 PC와 휴대폰에서 함께 쓸 수 있습니다.</p>
   </div>
+  <p class="auth-copy">© 2026 매물콕</p>
+  </section>
 </div>
 
 <!-- 회원가입 동의 안내 -->
@@ -140,8 +196,11 @@
     <div class="bar-in">
       <div class="row1">
         <div class="brand">
-          <span id="hd-office">사무소</span><span class="sep">·</span>센텀르엘 (매물)
-          <small>동호수 · 분양가 메모장 | 101~106동 <b id="hs-all">2,070</b>세대 | 내 매물 <b id="c-seed">0</b>호실</small>
+          <img class="brand-mark" src="assets/maemulcok-logo.png?v=2" alt="매물콕">
+          <span class="brand-txt">
+            <span class="brand-name">매물콕<span class="sep">·</span><span class="office" id="hd-office">사무소</span></span>
+            <small>센텀르엘 동호수·분양가 메모장 | 101~106동 <b id="hs-all">2,070</b>세대 | 내 매물 <b id="c-seed">0</b>호실</small>
+          </span>
         </div>
         <div class="counts">
           <span class="chip"><span class="dot w"></span>전체 <b id="c-all">–</b></span>
@@ -236,17 +295,21 @@
     <button class="mc-urg" id="mc-urg" data-on="0" title="급매 호실로 표시 — 호실 칸에 빨간 (급)이 붙습니다"><i>(급)</i> 급매 표시</button>
   </div>
   <div class="mc-fields" id="mc-fields">
-    <label class="mc-fi wide"><span id="mc-lb-price">금액 · P</span>
+    <label class="mc-fi wide"><span id="mc-lb-price">금액</span>
       <input id="mc-price-in" type="text" placeholder="예: 2억 5,000" autocomplete="off"></label>
     <label class="mc-fi"><span id="mc-lb-owner">소유주</span>
       <input id="mc-owner" type="text" placeholder="예: 홍길동" autocomplete="off"></label>
     <label class="mc-fi"><span id="mc-lb-phone">연락처</span>
       <input id="mc-phone" type="tel" placeholder="010-0000-0000" autocomplete="off"></label>
-    <label class="mc-fi ten wide"><span>임차인</span>
+    <label class="mc-fi ten"><span>임차인</span>
       <input id="mc-tenant" type="text" placeholder="예: 김철수" autocomplete="off"></label>
+    <label class="mc-fi ten"><span>임차인 연락처</span>
+      <input id="mc-tphone" type="tel" placeholder="010-0000-0000" autocomplete="off"></label>
+    <label class="mc-fi ten wide"><span>만기일</span>
+      <input id="mc-end" type="date" autocomplete="off"></label>
   </div>
   <div class="mc-cap">기타 메모</div>
-  <textarea id="mc-memo" placeholder="매물 정보·상담 내용·고객 반응 등을 적어두세요.&#10;입력하면 자동으로 저장됩니다."></textarea>
+  <textarea id="mc-memo" rows="6" placeholder="매물 정보·상담 내용·고객 반응 등을 적어두세요.&#10;입력하면 자동으로 저장됩니다."></textarea>
   <div class="mc-foot">
     <span class="saved" id="mc-saved">저장됨</span>
     <button class="mc-del" id="mc-del">메모 삭제</button>
@@ -315,10 +378,39 @@
   </div>
 </div>
 
+<!-- 전체 비우기 — 비밀번호 재확인 -->
+<div class="ov" id="ov5"></div>
+<div class="wipe" id="wipe" role="dialog" aria-modal="true" aria-labelledby="wipe-h">
+  <div class="wipe-h" id="wipe-h">⚠️ 전체 매물 비우기</div>
+  <p class="wipe-p">지금까지 등록한 <b>모든 매물과 메모가 영구 삭제</b>되며 <b>되돌릴 수 없습니다</b>.<br>계속하려면 현재 비밀번호를 한 번 더 입력해 주세요.</p>
+  <div class="wipe-cnt" id="wipe-cnt"></div>
+  <div class="wipe-f" id="wipe-pw-wrap">
+    <label for="wipe-pw">현재 비밀번호</label>
+    <input id="wipe-pw" type="password" autocomplete="current-password" placeholder="비밀번호" maxlength="72">
+  </div>
+  <p class="wipe-note" id="wipe-demo" hidden>데모 모드입니다. 연습용 기록은 비밀번호 확인 없이 비워집니다.</p>
+  <p class="wipe-msg" id="wipe-msg"></p>
+  <div class="wipe-btns">
+    <button type="button" class="wipe-cancel" id="wipe-cancel">취소</button>
+    <button type="button" class="wipe-del" id="wipe-go">전체 삭제</button>
+  </div>
+</div>
+
+<div class="ov" id="ov6"></div>
+<div class="exp" id="exp" role="dialog" aria-modal="true" aria-labelledby="exp-h">
+  <div class="exp-h" id="exp-h">⏰ 임대 만기 임박</div>
+  <p class="exp-p">3개월 안에 만기가 돌아오는 전세·월세 매물입니다.<br>항목을 누르면 그 호실의 메모장이 열립니다.</p>
+  <div class="exp-list" id="exp-list"></div>
+  <div class="exp-foot">
+    <button type="button" class="exp-close" id="exp-close">보지 않기</button>
+    <button type="button" class="exp-week" id="exp-week">일주일간 보지 않기</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=1"></script>
+<script src="config.js?v=3"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
