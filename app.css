@@ -494,6 +494,20 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .adm-more-wrap{display:flex; justify-content:center; padding:0 0 14px}
 .adm-more-wrap .btn{padding:5px 16px; font-size:12px}
 
+/* 회원 상세 — 왼쪽 매물 현황 / 오른쪽 그 회원의 변경 이력 */
+.of-wrap{display:flex; gap:14px; align-items:flex-start}
+.of-main{flex:1 1 auto; min-width:0}
+.of-hist{flex:0 0 330px; width:330px; border-left:1px solid #eef1f5; padding-left:12px;
+         max-height:calc(88vh - 180px); display:flex; flex-direction:column}
+.of-hist-h{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800;
+           color:var(--ink); padding:2px 0 8px; letter-spacing:-.2px}
+.of-hist-h span{font-size:11px; font-weight:700; color:#94a3b8}
+.of-hist-h .btn{margin-left:auto; padding:2px 8px; font-size:11px}
+.of-hist-list{overflow:auto; min-height:0}
+.of-hist .adm-log{margin-bottom:5px; padding:8px 9px}
+.of-hist .al-foot{margin-top:4px}
+.btn.tiny{padding:2px 8px; font-size:11px}
+
 @media (max-width:760px){
   .adm-mhead{display:none}
   .adm{width:100vw; height:100vh; border-radius:0; top:0; left:0; transform:none}
@@ -507,4 +521,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   .am-badge{order:3; justify-self:end}
   .adm-tools input[type=search]{flex:1 1 100%; min-width:0}
   .of-table .memo-c{max-width:none}
+  .of-wrap{flex-direction:column}
+  .of-hist{flex:1 1 auto; width:100%; border-left:0; border-top:1px solid #eef1f5;
+           padding-left:0; padding-top:10px; max-height:none}
 }

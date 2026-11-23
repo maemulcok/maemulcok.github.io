@@ -1099,7 +1099,8 @@ function authErr(e) {
   if (/Invalid login credentials/i.test(m)) return '아이디 또는 비밀번호가 맞지 않습니다.';
   if (/Email not confirmed/i.test(m)) return '메일함의 확인 링크를 먼저 눌러 주세요.';
   if (/already registered|already been registered|user already exists/i.test(m)) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
-  if (/Password should be at least/i.test(m)) return '비밀번호는 6자 이상이어야 합니다.';
+  if (/Password should be at least/i.test(m)) return '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.';
+  if (/weak_password/i.test(m)) return '비밀번호가 서버 기준에 못 미칩니다. 6자 이상으로 정해 주세요.';
   if (/rate limit|too many/i.test(m)) return '시도가 너무 잦습니다. 잠시 뒤 다시 해 주세요.';
   if (/Unable to validate email|invalid format|email_address_invalid/i.test(m)) return '아이디를 확인해 주세요. (한글·영문·숫자 2~20자)';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.';
@@ -1188,22 +1189,25 @@ $('form-login').addEventListener('submit', async function (e) {
 $('form-signup').addEventListener('submit', async function (e) {
   e.preventDefault();
   var raw = str($('su-id').value), pw = $('su-pw').value;
-  var agency = str($('su-agency').value), manager = str($('su-manager').value);
+  var manager = str($('su-manager').value);
   var consent = $('su-consent').checked;
   setMsg('su-msg', '');
-  if (!raw || !pw) { setMsg('su-msg', '아이디와 비밀번호를 입력해 주세요.'); return; }
+  if (!raw || !pw) { setMsg('su-msg', '아이디(상호명)와 비밀번호를 입력해 주세요.'); return; }
   if (raw.indexOf('@') >= 0) {
-    setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 이메일 대신 아이디(한글·영문·숫자)로 가입해 주세요.');
+    setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 이메일 대신 부동산 상호명을 아이디로 넣어 주세요.');
     $('su-id').focus(); return;
   }
   var username = idNorm(raw);
   if (!idValid(username)) {
-    setMsg('su-msg', '아이디는 한글·영문·숫자 2~20자로 정해 주세요. (공백·기호는 쓸 수 없습니다)');
+    setMsg('su-msg', '아이디(상호명)는 한글·영문·숫자 2~20자로 정해 주세요. (공백·기호는 쓸 수 없습니다)');
     $('su-id').focus(); return;
   }
+  /* 아이디 = 사무소 이름. 칸에 친 그대로(공백·대소문자 유지) 사무소명으로 보여 준다. */
+  var agency = raw.replace(/\s+/g, ' ').trim() || username;
   var email = idToEmail(username);
-  if (pw.length < 6) { setMsg('su-msg', '비밀번호는 6자 이상으로 정해 주세요.'); return; }
-  if (!agency || !manager) { setMsg('su-msg', '사무소명과 담당자명을 입력해 주세요.'); return; }
+  if (pw.length < 4) { setMsg('su-msg', '비밀번호는 4자 이상으로 정해 주세요.'); return; }
+  if (pw.length < 6) { setMsg('su-msg', '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.'); return; }
+  if (!manager) { setMsg('su-msg', '담당자명을 입력해 주세요.'); return; }
   if (!consent) { setMsg('su-msg', '이용약관 및 데이터 보관 동의에 체크해 주세요.'); $('su-consent').focus(); return; }
   $('su-go').disabled = true;
   var consentAt = new Date().toISOString();
@@ -1266,7 +1270,8 @@ $('form-newpw').addEventListener('submit', async function (e) {
   e.preventDefault();
   var a = $('np-pw').value, b = $('np-pw2').value;
   setMsg('np-msg', '');
-  if (a.length < 6) { setMsg('np-msg', '비밀번호는 6자 이상으로 정해 주세요.'); return; }
+  if (a.length < 4) { setMsg('np-msg', '비밀번호는 4자 이상으로 정해 주세요.'); return; }
+  if (a.length < 6) { setMsg('np-msg', '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.'); return; }
   if (a !== b) { setMsg('np-msg', '두 비밀번호가 서로 다릅니다.'); return; }
   $('np-go').disabled = true;
   try {
@@ -1311,6 +1316,7 @@ async function enterApp(user, knownProfile) {
     var office = S.profile.agency_name || S.profile.username || (user.email ? String(user.email).split('@')[0] : '') || '내 사무소';
     $('hd-office').textContent = office;
     $('btn-admin').hidden = !admOk();
+    if (admOk()) admRefreshCount();
     $('hs-all').textContent = (BOARD.units || []).length.toLocaleString('ko-KR');
     document.title = office + ' · 센텀르엘 (매물)';
 
@@ -1411,10 +1417,26 @@ document.addEventListener('visibilitychange', function () {
 var ACT_KO = { insert: '등록', update: '수정', delete: '삭제' };
 var F_LBL = { status: '상태', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', urgent: '급매', memo: '메모' };
 var admEl = $('adm'), ov4 = $('ov4');
-var adm = { on: false, tab: 'members', members: [], people: {}, logs: [], cursor: null,
+var adm = { on: false, tab: 'members', members: [], people: {}, logs: [], userLogs: [], cursor: null,
             user: '', action: '', q: '', openUser: null, busy: false, logsLoaded: false };
 
 function admOk() { return !!(LIVE && S.profile && S.profile.role === 'admin'); }
+
+/* 헤더의 [회원수 (N)] 버튼 — 관리자에게만 */
+function admSetBtn() {
+  var b = $('btn-admin');
+  if (!b) return;
+  var n = (adm.members || []).length;
+  b.textContent = '회원수 (' + n + ')';
+  b.title = '관리자 콘솔 — 가입 사무소 ' + n + '곳의 매물·변경 이력';
+}
+async function admRefreshCount() {
+  if (!admOk()) return;
+  var res = await S.sb.rpc('admin_members');
+  if (res.error) { console.warn('admin_members', res.error); return; }
+  adm.members = res.data || [];
+  admSetBtn();
+}
 
 function admWhen(iso) {
   if (!iso) return '—';
@@ -1517,6 +1539,7 @@ async function admLoadMembers() {
     return;
   }
   adm.members = res.data || [];
+  admSetBtn();
   admRenderMembers();
   admFillUserSelect();
 }
@@ -1563,6 +1586,11 @@ async function admOpenOffice(uid) {
   box.hidden = false;
   box.innerHTML = '<div class="adm-empty">매물을 불러오는 중…</div>';
   var res = await S.sb.from('listings').select('*').eq('user_id', uid).order('unit_key');
+  var lg = await S.sb.from('activity_logs')
+    .select('id,user_id,unit_key,action,before_data,after_data,actor_id,created_at')
+    .eq('user_id', uid).order('id', { ascending: false }).limit(50);
+  if (lg.error) console.warn('activity_logs (회원별)', lg.error);
+  adm.userLogs = lg.error ? [] : (lg.data || []);
   if (res.error) {
     box.innerHTML = '<div class="adm-empty">매물을 읽지 못했습니다.<br>' + esc(res.error.message || '') + '</div>';
     return;
@@ -1600,12 +1628,42 @@ async function admOpenOffice(uid) {
         + '<td>' + esc(admWhen(r.updated_at)) + '</td>'
         + '</tr>';
     }).join('') + '</tbody></table>') : '<div class="adm-empty">등록한 매물이 없습니다.</div>';
-  box.innerHTML = head + chips + table;
+  var hist = '<aside class="of-hist">'
+    + '<div class="of-hist-h">이 회원의 변경 이력 <span>' + adm.userLogs.length + '건</span>'
+    + '<button class="btn tiny" type="button" id="of-hist-refresh" title="이력을 다시 불러옵니다">새로고침</button></div>'
+    + '<div class="of-hist-list" id="of-hist-list"></div></aside>';
+  box.innerHTML = '<div class="of-wrap"><div class="of-main">' + head + chips + table + '</div>' + hist + '</div>';
+  admRenderUserLogs();
+  $('of-hist-refresh').onclick = function () { admOpenOffice(uid); };
   $('of-back').onclick = function () {
     box.hidden = true;
     $('adm-members').hidden = false;
     adm.openUser = null;
   };
+}
+
+/* 회원 한 명의 등록·수정·삭제·메모 이력 (우측 패널) */
+function admRenderUserLogs() {
+  var el = $('of-hist-list');
+  if (!el) return;
+  var rows = adm.userLogs || [];
+  if (!rows.length) { el.innerHTML = '<div class="adm-empty">아직 변경 이력이 없습니다.</div>'; return; }
+  el.innerHTML = rows.map(function (g) {
+    var byAdmin = g.actor_id && g.actor_id !== g.user_id;
+    return '<div class="adm-log">'
+      + '<div class="al-top"><span class="al-when">' + esc(admWhen(g.created_at)) + '</span>'
+      + '<span class="al-act ' + esc(g.action) + '">' + esc(ACT_KO[g.action] || g.action) + '</span>'
+      + '<b>' + esc(admUnit(g.unit_key)) + '</b>'
+      + (byAdmin ? '<span class="al-tag">관리자 작업</span>' : '')
+      + '</div>'
+      + '<div class="al-diff">' + admSummary(g) + '</div>'
+      + '<div class="al-foot"><button class="al-undo" type="button" data-ulog="' + esc(g.id) + '">'
+      + (g.action === 'insert' ? '등록 전으로 되돌리기' : '이 상태로 복구') + '</button></div>'
+      + '</div>';
+  }).join('');
+  el.querySelectorAll('[data-ulog]').forEach(function (b) {
+    b.onclick = function () { admRestore(b.dataset.ulog, b); };
+  });
 }
 
 async function admLoadLogs(reset) {
@@ -1659,7 +1717,7 @@ function admRenderLogs() {
 }
 async function admRestore(id, btn) {
   if (adm.busy) return;
-  var g = adm.logs.filter(function (x) { return String(x.id) === String(id); })[0];
+  var g = (adm.logs || []).concat(adm.userLogs || []).filter(function (x) { return String(x.id) === String(id); })[0];
   if (!g) return;
   var d = g.before_data;
   var who = admWho(g.user_id), unit = admUnit(g.unit_key);

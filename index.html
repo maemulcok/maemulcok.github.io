@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
 <title>센텀르엘 (매물)</title>
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 </head>
 <body>
 
@@ -42,20 +42,16 @@
 
     <!-- 회원가입 -->
     <form class="auth-form" id="form-signup" autocomplete="on" hidden>
-      <label class="field"><span>아이디 (한글·영문·숫자)</span>
-        <input id="su-id" type="text" autocomplete="username" placeholder="예: 김소장" maxlength="20" required>
+      <label class="field"><span>아이디 (부동산 상호명 · 예: 골드공인중개사)</span>
+        <input id="su-id" type="text" autocomplete="username" placeholder="예: 골드공인중개사" maxlength="20" required>
       </label>
       <label class="field"><span>비밀번호</span>
-        <input id="su-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
+        <input id="su-pw" type="password" autocomplete="new-password" placeholder="4자 이상" required>
       </label>
-      <div class="two">
-        <label class="field"><span>부동산 사무소명</span>
-          <input id="su-agency" type="text" placeholder="예: 골드공인중개사사무소" maxlength="40" required>
-        </label>
-        <label class="field"><span>담당자명</span>
-          <input id="su-manager" type="text" placeholder="예: 김민제" maxlength="20" required>
-        </label>
-      </div>
+      <label class="field"><span>담당자명</span>
+        <input id="su-manager" type="text" placeholder="예: 김민제" maxlength="20" required>
+      </label>
+      <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다.</span></div>
       <label class="consent" for="su-consent">
         <input type="checkbox" id="su-consent">
         <span>서비스 이용약관 및 <b>장애 복구·백업 목적의 데이터 보관</b>, <b>관리자의 열람·복구</b>에 동의합니다. (필수)</span>
@@ -80,7 +76,7 @@
     <!-- 새 비밀번호 (메일 링크로 돌아왔을 때) -->
     <form class="auth-form" id="form-newpw" hidden>
       <div class="field"><span>새 비밀번호</span>
-        <input id="np-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
+        <input id="np-pw" type="password" autocomplete="new-password" placeholder="4자 이상" required>
       </div>
       <div class="field"><span>새 비밀번호 확인</span>
         <input id="np-pw2" type="password" autocomplete="new-password" placeholder="한 번 더 입력" required>
@@ -159,7 +155,7 @@
           <span class="zval" id="zval">100%</span>
         </div>
         <button class="chip btn" id="btn-help" title="사용 안내">?</button>
-        <button class="chip btn adm-open-btn" id="btn-admin" title="관리자 콘솔" hidden>관리자 콘솔</button>
+        <button class="chip btn adm-open-btn" id="btn-admin" title="관리자 콘솔" hidden>회원수</button>
         <button class="chip btn" id="btn-logout" title="로그아웃">로그아웃</button>
       </div>
 
@@ -321,6 +317,6 @@
 
 <script src="config.js?v=1"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
