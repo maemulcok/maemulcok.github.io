@@ -1132,6 +1132,10 @@ function authErr(e) {
   if (/already registered|already been registered|user already exists/i.test(m)) return '이미 가입된 이메일입니다. 다른 이메일로 가입하거나, 이 이메일로 로그인해 주세요.';
   if (/Password should be at least/i.test(m)) return '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.';
   if (/weak_password/i.test(m)) return '비밀번호가 서버 기준에 못 미칩니다. 6자 이상으로 정해 주세요.';
+  if (/For security purposes, you can only request this after (\d+) seconds/i.test(m)) {
+    return '방금 요청하셨습니다. ' + m.match(/(\d+) seconds/i)[1] + '초 뒤에 다시 시도해 주세요.';
+  }
+  if (/Email rate limit exceeded|over_email_send_rate_limit/i.test(m)) return '메일 발송 한도를 넘었습니다. 조금 뒤에 다시 시도해 주세요.';
   if (/rate limit|too many/i.test(m)) return '시도가 너무 잦습니다. 잠시 뒤 다시 해 주세요.';
   if (/Unable to validate email|invalid format|email_address_invalid/i.test(m)) return '이메일 주소를 확인해 주세요. 예: name@example.com';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.';
