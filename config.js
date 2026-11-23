@@ -6,14 +6,14 @@
 
    Supabase > Project Settings > API 에서 복사:
      SUPABASE_URL      = Project URL          (예: https://abcdefghijk.supabase.co)
-     SUPABASE_ANON_KEY = anon public 키       (Lengthy JWT, 공개되어도 되는 키)
+     SUPABASE_ANON_KEY = anon(공개) 키        (publishable 키, 공개되어도 되는 키)
 
    ※ service_role 키는 절대 넣지 마세요. anon 키는 공개용이며,
      데이터 보호는 supabase_schema.sql 의 RLS 정책이 담당합니다.
    ============================================================ */
 window.CENTUM_CONFIG = {
   SUPABASE_URL: 'https://trcytxrztbeknbtqvymv.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyY3l0eHJ6dGJla25idHF2eW12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzNjg2MzksImV4cCI6MjExMDk0NDYzOX0.gCzkAgHERHqhdfsh8y3E7c5IUmHIjEyBUohMCjsxmIg',
+  SUPABASE_ANON_KEY: 'sb_publishable_J-iVxnohfXesXhRjfM57Rw_a_jUlrIA',
 
   /* 로그인 메일의 '비밀번호 재설정' 링크가 돌아올 주소.
      비워 두면 이 페이지의 현재 주소로 돌아옵니다.
