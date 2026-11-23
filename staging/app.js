@@ -122,7 +122,7 @@ function dongLabel(d) { return DONG_LABEL[d] || (d + '동'); }
 /* 타입 표기: 센텀르엘은 타입명(84·104A), 아이파크는 평형(36평), 제니스는 타입명(162C) */
 function typeKind() { return CX.id === 'ipark' ? '평형' : '타입'; }
 function chipLabel(t) { return CX.id === 'ipark' ? t + '평' : t; }
-function typeFull(t) { return CX.id === 'ipark' ? t + '평형' : t + '타입'; }
+function typeFull(t) { return CX.id === 'ipark' ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입'); }
 /* 타입 줄(칸)에는 좁은 칸에 맞는 짧은 이름: 제니스는 숫자를 빼고 영문 타입만(162C→C) */
 function rowTypeLabel(t) {
   if (CX.id !== 'zenith') return t;
@@ -973,7 +973,7 @@ function openCard(td) {
 
   var sup = unitSup(u), jeon = unitJeon(u);
   mcHo.textContent = dongLabel(u.d) + ' ' + hoNum(u.f, u.h) + '호';
-  mcType.textContent = u.t + typeKind();
+  mcType.textContent = typeFull(u.t);
   var c = TYPE_COLOR[u.t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
   mcType.style.background = c.bg; mcType.style.borderColor = c.bd; mcType.style.color = c.fg;
   if (CX.price) {
@@ -1231,7 +1231,7 @@ window.addEventListener('resize', function () {
 });
 function setGuide() {
   var tap = (COARSE || isNarrow()) ? '한 번 탭' : '더블클릭';
-  var tail = isNarrow() ? '' : ' · 분양가 · 색상';
+  var tail = isNarrow() ? '' : (CX.price ? ' · 분양가 · 색상' : ' · 면적 · 색상');
   $('guide-sub').innerHTML = (LIVE ? '' : '데모 모드 · ') + '호실을 <b>' + tap + '</b>하면 메모장' + tail;
 }
 
@@ -2121,7 +2121,7 @@ function renderHome() {
     var lines = isI
       ? ['1동 66층 · 2동 72층 · 3동 46층', '199개 평면 · 118.45~423.41㎡', '전용률 64~70% (KB 기준)']
       : isZ
-      ? ['101동 80층 · 102동 75층 · 103동 70층', '148.11~325.30㎡ · 14개 타입', '마린시티 · 2011년 준공']
+      ? ['101동 80층 · 102동 75층 · 103동 70층', '148.11~325.30㎡ · 전용 99.40~222.59㎡', '마린시티 · 2011년 준공']
       : ['101~106동 · 6개동', '84 · 104 · 125 · 154 · 244타입', '분양가·계약금까지 표기'];
     return '<button type="button" class="hcard' + (isI ? ' ipark' : (isZ ? ' zenith' : ' centum')) + '" data-cx="' + cx.id + '">'
       + '<span class="hc-top"><b>' + esc(cx.name) + '</b><em>' + esc(cx.desc) + '</em></span>'
