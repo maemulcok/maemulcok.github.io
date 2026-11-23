@@ -177,6 +177,7 @@ var CloudStore = {
     var out = {}, from = 0, step = 1000;
     for (;;) {
       var res = await S.sb.from('listings').select('*')
+        .eq('user_id', S.user.id)          /* 관리자 계정이어도 배치표는 내 매물만 */
         .order('unit_key', { ascending: true }).range(from, from + step - 1);
       if (res.error) throw res.error;
       var rows = res.data || [];
@@ -1477,17 +1478,17 @@ function admRenderMembers() {
     el.innerHTML = '<div class="adm-empty">' + (adm.members.length ? '검색 결과가 없습니다.' : '아직 가입한 사무소가 없습니다.') + '</div>';
     return;
   }
-  el.innerHTML = list.map(function (m) {
+  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span></div>';
+  el.innerHTML = head + list.map(function (m) {
     return '<button class="adm-mrow" type="button" data-uid="' + esc(m.user_id) + '">'
       + '<span class="am-name">' + esc(m.agency_name || '(사무소명 없음)') + '</span>'
       + '<span class="am-mgr">' + esc(m.manager_name || '—') + '</span>'
       + '<span class="am-mail">' + esc(m.email || '—') + '</span>'
       + '<span class="am-cnt">' + Number(m.listing_count || 0).toLocaleString('ko-KR') + '호실</span>'
       + '<span class="am-last">' + esc(admWhen(m.last_activity)) + '</span>'
-      + (m.role === 'admin' ? '<span class="am-badge">관리자</span>' : '<span class="am-last">' + esc(admWhen(m.created_at)) + ' 가입</span>')
+      + (m.role === 'admin' ? '<span class="am-badge">관리자</span>' : '<span class="am-last">일반</span>')
       + '</button>';
-  }).join('');
-  el.querySelectorAll('[data-uid]').forEach(function (b) {
+  }).join('');  el.querySelectorAll('[data-uid]').forEach(function (b) {
     b.onclick = function () { admOpenOffice(b.dataset.uid); };
   });
 }
@@ -1637,7 +1638,7 @@ async function admRestore(id, btn) {
       }, { onConflict: 'user_id,unit_key' });
     }
     if (res.error) throw res.error;
-    toast(g.action === 'insert' || !d ? '등록 전 상태로 되돌렸습니다.' : unit + ' 을(를) 복구했습니다.');
+    toast((g.action === 'insert' || !d) ? (unit + ' · 등록 전으로 되돌렸습니다.') : (unit + ' · 복구 완료'));
     /* 관리자 본인 매물이면 이 화면도 맞춘다 */
     if (S.user && S.user.id === g.user_id) {
       try {

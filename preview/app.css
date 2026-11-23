@@ -448,6 +448,8 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .adm-tools input:focus, .adm-tools select:focus{border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.16)}
 .adm-spacer{flex:1 1 auto}
 .adm-list, .adm-logs, .adm-office{flex:1 1 auto; min-height:0; overflow:auto; padding:8px 14px 16px}
+.adm-mhead{display:grid; grid-template-columns:1.5fr .9fr 1.6fr .6fr 1fr auto; gap:8px; padding:2px 12px 6px;
+  font-size:10.5px; font-weight:800; color:#94a3b8}
 .adm-mrow{display:grid; grid-template-columns:1.5fr .9fr 1.6fr .6fr 1fr auto; gap:8px; align-items:center;
   width:100%; text-align:left; border:1px solid #eef1f5; border-radius:10px; background:#fff;
   padding:9px 11px; margin:0 0 6px; cursor:pointer; font:inherit; color:var(--ink)}
@@ -493,6 +495,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .adm-more-wrap .btn{padding:5px 16px; font-size:12px}
 
 @media (max-width:760px){
+  .adm-mhead{display:none}
   .adm{width:100vw; height:100vh; border-radius:0; top:0; left:0; transform:none}
   .adm.on{transform:none}
   .adm-head{flex-wrap:wrap; padding:10px 12px}
