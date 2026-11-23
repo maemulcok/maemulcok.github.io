@@ -1192,6 +1192,7 @@ async function signOut() {
   $('app').hidden = true; $('pending').hidden = true;
   expShownSession = false; expClose();
   resetAuthForms();
+  resetScreenAfterAuth();
   showAuth('login');
 }
 $('btn-logout').onclick = async function () {
@@ -1203,6 +1204,15 @@ $('pending-out').onclick = function () { signOut(); };
 /* ============================================================
    인증 — 화면
    ============================================================ */
+/* 화면을 바꿀 때 앞 화면에서 남은 입력 포커스와 스크롤을 되돌린다.
+   휴대폰(iOS Safari)에서는 로그인 칸을 누를 때 화면이 확대되고 그 확대·스크롤이
+   로그인 뒤 배치표까지 남아 좌우가 잘려 보이므로, 화면이 바뀌는 순간에 한 번 지운다. */
+function resetScreenAfterAuth() {
+  try { var a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); } catch (e) {}
+  try { window.scrollTo(0, 0); } catch (e) {}
+  try { document.documentElement.scrollLeft = 0; document.documentElement.scrollTop = 0; } catch (e) {}
+  if (document.body) { document.body.scrollLeft = 0; document.body.scrollTop = 0; }
+}
 var authTabs = ['login', 'signup', 'reset', 'newpw'];
 /* 비밀번호 재설정 링크로 들어온 상태인지 (새 비밀번호 화면을 먼저 보여 준다) */
 var recovering = false;
@@ -1584,6 +1594,8 @@ async function enterApp(user, knownProfile) {
 
     $('auth').hidden = true; $('pending').hidden = true; $('app').hidden = false;
     $('ribbon').hidden = LIVE;
+    /* 로그인 칸에서 확대·스크롤된 화면을 배치표 첫 화면으로 되돌린다 */
+    resetScreenAfterAuth();
 
     var office = S.profile.agency_name || S.profile.username || (user.email ? String(user.email).split('@')[0] : '') || '내 사무소';
     $('hd-office').textContent = office;
@@ -1620,6 +1632,8 @@ async function enterApp(user, knownProfile) {
     setGuide();
     if (isNarrow()) setTab(101);
     $('boot').hidden = true;
+    resetScreenAfterAuth();
+    requestAnimationFrame(resetScreenAfterAuth);
     /* 서버 기록을 받은 뒤 만기 임박 알림 (관리자 읽기전용 열람 중에는 띄우지 않는다) */
     setTimeout(function () { try { checkLeaseAlerts(); } catch (e) {} }, 420);
   } catch (e) {
