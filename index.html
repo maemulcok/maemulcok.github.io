@@ -46,12 +46,12 @@
         <input id="su-id" type="text" autocomplete="username" placeholder="예: 골드공인중개사" maxlength="20" required>
       </label>
       <label class="field"><span>비밀번호</span>
-        <input id="su-pw" type="password" autocomplete="new-password" placeholder="4자 이상" required>
+        <input id="su-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
       </label>
       <label class="field"><span>담당자명</span>
         <input id="su-manager" type="text" placeholder="예: 김민제" maxlength="20" required>
       </label>
-      <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다.</span></div>
+      <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다. 비밀번호는 <b>6자 이상</b>.</span></div>
       <label class="consent" for="su-consent">
         <input type="checkbox" id="su-consent">
         <span>서비스 이용약관 및 <b>장애 복구·백업 목적의 데이터 보관</b>, <b>관리자의 열람·복구</b>에 동의합니다. (필수)</span>
@@ -76,7 +76,7 @@
     <!-- 새 비밀번호 (메일 링크로 돌아왔을 때) -->
     <form class="auth-form" id="form-newpw" hidden>
       <div class="field"><span>새 비밀번호</span>
-        <input id="np-pw" type="password" autocomplete="new-password" placeholder="4자 이상" required>
+        <input id="np-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
       </div>
       <div class="field"><span>새 비밀번호 확인</span>
         <input id="np-pw2" type="password" autocomplete="new-password" placeholder="한 번 더 입력" required>
@@ -285,7 +285,7 @@
     <!-- 회원 목록 -->
     <section class="adm-pane" id="adm-pane-members">
       <div class="adm-tools">
-        <input id="adm-mq" type="search" placeholder="사무소·담당자·이메일 검색" autocomplete="off">
+        <input id="adm-mq" type="search" placeholder="사무소·아이디·담당자 검색" autocomplete="off">
         <span class="adm-spacer"></span>
         <button class="btn" id="adm-mrefresh">새로고침</button>
       </div>
