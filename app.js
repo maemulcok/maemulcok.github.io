@@ -607,6 +607,7 @@ function applyROView() {
   mcUrg.disabled = ro;
   $('mc-del').hidden = ro;
   if (ro) { mcSaved.textContent = '읽기 전용 · 보기만'; mcSaved.classList.add('on'); }
+  else { mcSaved.textContent = '저장됨'; mcSaved.classList.remove('on'); }
 }
 function syncFieldUI(st) {
   var rental = (st === 'jeonse' || st === 'wolse');
