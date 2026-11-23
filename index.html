@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#ffffff">
 <title>센텀르엘 (매물)</title>
-<link rel="stylesheet" href="app.css?v=3">
+<link rel="stylesheet" href="app.css?v=4">
 </head>
 <body>
 
@@ -29,8 +29,8 @@
 
     <!-- 로그인 -->
     <form class="auth-form" id="form-login" autocomplete="on">
-      <label class="field"><span>이메일</span>
-        <input id="li-email" type="email" autocomplete="username" placeholder="office@example.com" required>
+      <label class="field"><span>아이디 (관리자는 이메일)</span>
+        <input id="li-id" type="text" autocomplete="username" placeholder="예: 김소장" required>
       </label>
       <label class="field"><span>비밀번호</span>
         <input id="li-pw" type="password" autocomplete="current-password" placeholder="비밀번호" required>
@@ -42,8 +42,8 @@
 
     <!-- 회원가입 -->
     <form class="auth-form" id="form-signup" autocomplete="on" hidden>
-      <label class="field"><span>이메일</span>
-        <input id="su-email" type="email" autocomplete="username" placeholder="office@example.com" required>
+      <label class="field"><span>아이디 (한글·영문·숫자)</span>
+        <input id="su-id" type="text" autocomplete="username" placeholder="예: 김소장" maxlength="20" required>
       </label>
       <label class="field"><span>비밀번호</span>
         <input id="su-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
@@ -68,9 +68,10 @@
 
     <!-- 비밀번호 찾기 -->
     <form class="auth-form" id="form-reset" hidden>
-      <label class="field"><span>가입한 이메일</span>
-        <input id="rs-email" type="email" autocomplete="username" placeholder="office@example.com" required>
+      <label class="field"><span>아이디 또는 관리자 이메일</span>
+        <input id="rs-id" type="text" autocomplete="username" placeholder="예: 김소장" required>
       </label>
+      <p class="auth-note" style="margin:2px 0 10px">아이디 회원은 비밀번호를 잊었을 때 <b>관리자에게 초기화를 요청</b>해 주세요. (재설정 메일은 <b>관리자 이메일 계정</b>으로만 발송됩니다)</p>
       <div class="auth-msg" id="rs-msg"></div>
       <button class="auth-go" type="submit" id="rs-go">재설정 메일 받기</button>
       <button class="auth-link" type="button" data-tab="login">로그인으로 돌아가기</button>
@@ -320,6 +321,6 @@
 
 <script src="config.js?v=1"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

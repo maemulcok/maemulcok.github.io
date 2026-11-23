@@ -1065,14 +1065,43 @@ function setMsg(id, text, ok) {
   el.classList.toggle('ok', !!ok);
   el.classList.remove('on');
 }
+/* ---------- 아이디 ↔ 내부 주소 ----------
+   일반 회원은 이메일 없이 '아이디'로 가입·로그인합니다.
+   아이디(한글·영문·숫자)는 UTF-8 바이트를 hex 로 바꿔
+   u_<hex>@id.centumleel.local 이라는 내부 전용 주소로 바꿔 Supabase 에 넘깁니다.
+   같은 아이디는 언제나 같은 주소가 되므로 로그인·중복 확인이 그대로 동작합니다.
+   관리자만 진짜 이메일로 로그인합니다(@ 가 들어 있으면 이메일 그대로). */
+var ID_DOMAIN = 'id.centumleel.local';
+var ID_RULE = /^[0-9a-z\uac00-\ud7a3]{2,20}$/;
+function idNorm(raw) {
+  /* 공백은 모두 빼고, 영문은 소문자로 통일 (한글·숫자는 그대로) */
+  return String(raw == null ? '' : raw).replace(/\s+/g, '').replace(/[A-Z]/g, function (c) { return c.toLowerCase(); });
+}
+function idValid(id) { return ID_RULE.test(id); }
+function idToEmail(raw) {
+  var id = idNorm(raw);
+  if (!id) return '';
+  var bytes = new TextEncoder().encode(id), hex = '';
+  for (var i = 0; i < bytes.length; i++) hex += ('0' + bytes[i].toString(16)).slice(-2);
+  return 'u_' + hex + '@' + ID_DOMAIN;
+}
+function isIdEmail(mail) {
+  return String(mail || '').toLowerCase().slice(-(ID_DOMAIN.length + 1)) === '@' + ID_DOMAIN;
+}
+/* '아이디' 입력값 → Supabase 에 넘길 이메일. @ 가 있으면 관리자 이메일로 본다. */
+function loginEmail(raw) {
+  var v = str(raw);
+  return v.indexOf('@') >= 0 ? v : idToEmail(v);
+}
+
 function authErr(e) {
   var m = String((e && (e.message || e.error_description)) || e || '');
-  if (/Invalid login credentials/i.test(m)) return '이메일 또는 비밀번호가 맞지 않습니다.';
+  if (/Invalid login credentials/i.test(m)) return '아이디 또는 비밀번호가 맞지 않습니다.';
   if (/Email not confirmed/i.test(m)) return '메일함의 확인 링크를 먼저 눌러 주세요.';
-  if (/already registered|already been registered/i.test(m)) return '이미 가입된 이메일입니다. 로그인해 주세요.';
+  if (/already registered|already been registered|user already exists/i.test(m)) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
   if (/Password should be at least/i.test(m)) return '비밀번호는 6자 이상이어야 합니다.';
   if (/rate limit|too many/i.test(m)) return '시도가 너무 잦습니다. 잠시 뒤 다시 해 주세요.';
-  if (/Unable to validate email|invalid format/i.test(m)) return '이메일 주소를 확인해 주세요.';
+  if (/Unable to validate email|invalid format|email_address_invalid/i.test(m)) return '아이디를 확인해 주세요. (한글·영문·숫자 2~20자)';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '서버에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.';
   return m || '처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요.';
 }
@@ -1099,45 +1128,49 @@ var DK = 'cls.demo.v1';
 function demoData() { try { return JSON.parse(localStorage.getItem(DK) || '{}') || {}; } catch (e) { return {}; } }
 function demoUsers() { return demoData().users || {}; }
 function demoSave(d) { localStorage.setItem(DK, JSON.stringify(d)); }
-function demoLogin(email, pw) {
-  var d = demoData(), u = (d.users || {})[email.toLowerCase()];
-  if (!u) return '가입되지 않은 이메일입니다. 회원가입을 먼저 해 주세요.';
+function demoLogin(email, pw, username) {
+  var d = demoData(), key = email.toLowerCase(), u = (d.users || {})[key];
+  if (!u) return '가입되지 않은 아이디입니다. 회원가입을 먼저 해 주세요.';
   if (u.pw !== pw) return '비밀번호가 맞지 않습니다.';
-  d.session = email.toLowerCase(); demoSave(d);
-  enterApp({ id: 'demo:' + email.toLowerCase(), email: email.toLowerCase() }, {
-    agency_name: u.agency, manager_name: u.manager, approved: u.approved !== false
+  d.session = key; demoSave(d);
+  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, {
+    username: username, agency_name: u.agency, manager_name: u.manager, approved: u.approved !== false
   });
   return '';
 }
-function demoSignup(email, pw, agency, manager, consent) {
+function demoSignup(email, pw, agency, manager, consent, username) {
   var d = demoData(); d.users = d.users || {};
   var key = email.toLowerCase();
-  if (d.users[key]) return '이미 가입된 이메일입니다. 로그인해 주세요.';
+  if (d.users[key]) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
   if (!consent) return '백업·보관 동의에 체크해 주세요.';
   d.users[key] = { pw: pw, agency: agency, manager: manager, approved: true, consentAt: new Date().toISOString() };
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: key }, { agency_name: agency, manager_name: manager, approved: true });
+  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, { username: username, agency_name: agency, manager_name: manager, approved: true });
   return '';
 }
 
 $('demo-go').onclick = function () {
   var d = demoData(); d.users = d.users || {};
-  var key = 'demo@example.com';
+  var key = idToEmail('데모');
   if (!d.users[key]) d.users[key] = { pw: 'demo1234', agency: '데모공인중개사사무소', manager: '체험 계정', approved: true, consentAt: new Date().toISOString() };
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: key }, { agency_name: d.users[key].agency, manager_name: d.users[key].manager, approved: true });
+  enterApp({ id: 'demo:' + key, email: null }, { username: '데모', agency_name: d.users[key].agency, manager_name: d.users[key].manager, approved: true });
 };
 
 /* ---------- 로그인 ---------- */
 $('form-login').addEventListener('submit', async function (e) {
   e.preventDefault();
-  var email = str($('li-email').value), pw = $('li-pw').value;
+  var input = str($('li-id').value), pw = $('li-pw').value;
   setMsg('li-msg', '');
-  if (!email || !pw) { setMsg('li-msg', '이메일과 비밀번호를 입력해 주세요.'); return; }
+  if (!input || !pw) { setMsg('li-msg', '아이디와 비밀번호를 입력해 주세요.'); return; }
+  if (input.indexOf('@') < 0 && !idValid(idNorm(input))) {
+    setMsg('li-msg', '아이디는 한글·영문·숫자 2~20자입니다. (관리자는 이메일로 로그인)'); return;
+  }
+  var email = loginEmail(input);
   $('li-go').disabled = true;
   try {
     if (!LIVE) {
-      var err = demoLogin(email, pw);
+      var err = demoLogin(email, pw, idNorm(input));
       if (err) setMsg('li-msg', err);
       return;
     }
@@ -1154,11 +1187,21 @@ $('form-login').addEventListener('submit', async function (e) {
 /* ---------- 회원가입 ---------- */
 $('form-signup').addEventListener('submit', async function (e) {
   e.preventDefault();
-  var email = str($('su-email').value), pw = $('su-pw').value;
+  var raw = str($('su-id').value), pw = $('su-pw').value;
   var agency = str($('su-agency').value), manager = str($('su-manager').value);
   var consent = $('su-consent').checked;
   setMsg('su-msg', '');
-  if (!email || !pw) { setMsg('su-msg', '이메일과 비밀번호를 입력해 주세요.'); return; }
+  if (!raw || !pw) { setMsg('su-msg', '아이디와 비밀번호를 입력해 주세요.'); return; }
+  if (raw.indexOf('@') >= 0) {
+    setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 이메일 대신 아이디(한글·영문·숫자)로 가입해 주세요.');
+    $('su-id').focus(); return;
+  }
+  var username = idNorm(raw);
+  if (!idValid(username)) {
+    setMsg('su-msg', '아이디는 한글·영문·숫자 2~20자로 정해 주세요. (공백·기호는 쓸 수 없습니다)');
+    $('su-id').focus(); return;
+  }
+  var email = idToEmail(username);
   if (pw.length < 6) { setMsg('su-msg', '비밀번호는 6자 이상으로 정해 주세요.'); return; }
   if (!agency || !manager) { setMsg('su-msg', '사무소명과 담당자명을 입력해 주세요.'); return; }
   if (!consent) { setMsg('su-msg', '이용약관 및 데이터 보관 동의에 체크해 주세요.'); $('su-consent').focus(); return; }
@@ -1166,7 +1209,7 @@ $('form-signup').addEventListener('submit', async function (e) {
   var consentAt = new Date().toISOString();
   try {
     if (!LIVE) {
-      var err = demoSignup(email, pw, agency, manager, consent);
+      var err = demoSignup(email, pw, agency, manager, consent, username);
       if (err) setMsg('su-msg', err);
       return;
     }
@@ -1175,6 +1218,7 @@ $('form-signup').addEventListener('submit', async function (e) {
       options: {
         emailRedirectTo: siteUrl(),
         data: {
+          username: username,
           agency_name: agency, manager_name: manager,
           consent: 'v1', consent_at: consentAt
         }
@@ -1197,9 +1241,13 @@ $('form-signup').addEventListener('submit', async function (e) {
 /* ---------- 비밀번호 찾기 ---------- */
 $('form-reset').addEventListener('submit', async function (e) {
   e.preventDefault();
-  var email = str($('rs-email').value);
+  var email = str($('rs-id').value);
   setMsg('rs-msg', '');
-  if (!email) { setMsg('rs-msg', '이메일을 입력해 주세요.'); return; }
+  if (!email) { setMsg('rs-msg', '아이디 또는 관리자 이메일을 입력해 주세요.'); return; }
+  if (email.indexOf('@') < 0) {
+    setMsg('rs-msg', '아이디 회원은 비밀번호를 잊었을 때 관리자에게 초기화를 요청해 주세요. (재설정 메일은 관리자 이메일 계정에서만 받을 수 있습니다)', true);
+    return;
+  }
   if (!LIVE) { setMsg('rs-msg', '데모 모드에는 비밀번호 재설정 메일이 없습니다. 새로 가입해 주세요.', true); return; }
   $('rs-go').disabled = true;
   try {
@@ -1253,14 +1301,14 @@ async function enterApp(user, knownProfile) {
     if (S.profile.approved === false) {
       $('boot').hidden = true; $('auth').hidden = true; $('app').hidden = true;
       $('pending').hidden = false;
-      $('pending-who').textContent = (S.profile.agency_name || user.email) + ' · ' + (user.email || '');
+      $('pending-who').textContent = (S.profile.agency_name || S.profile.username || '') + ' · ' + (S.profile.username || user.email || '');
       return;
     }
 
     $('auth').hidden = true; $('pending').hidden = true; $('app').hidden = false;
     $('ribbon').hidden = LIVE;
 
-    var office = S.profile.agency_name || user.email.split('@')[0];
+    var office = S.profile.agency_name || S.profile.username || (user.email ? String(user.email).split('@')[0] : '') || '내 사무소';
     $('hd-office').textContent = office;
     $('btn-admin').hidden = !admOk();
     $('hs-all').textContent = (BOARD.units || []).length.toLocaleString('ko-KR');
@@ -1303,9 +1351,9 @@ async function enterApp(user, knownProfile) {
 
 async function loadProfile(user) {
   if (!LIVE) return { agency_name: '', manager_name: '', approved: true, role: 'user' };
-  var res = await S.sb.from('profiles').select('agency_name,manager_name,approved,role').eq('id', user.id).maybeSingle();
-  if (res.error && /role/i.test(res.error.message || '')) {
-    /* 관리자 기능 이전에 만든 데이터베이스여도 앱은 그대로 열린다 */
+  var res = await S.sb.from('profiles').select('username,agency_name,manager_name,approved,role').eq('id', user.id).maybeSingle();
+  if (res.error && /role|username/i.test(res.error.message || '')) {
+    /* 관리자·아이디 기능 이전에 만든 데이터베이스여도 앱은 그대로 열린다 */
     res = await S.sb.from('profiles').select('agency_name,manager_name,approved').eq('id', user.id).maybeSingle();
   }
   if (res.error) {
@@ -1317,7 +1365,7 @@ async function loadProfile(user) {
   }
   if (res.data) return res.data;
   var m = user.user_metadata || {};
-  return { agency_name: m.agency_name || '', manager_name: m.manager_name || '', approved: true, role: 'user' };
+  return { username: m.username || '', agency_name: m.agency_name || '', manager_name: m.manager_name || '', approved: true, role: 'user' };
 }
 
 function onRemoteChange(payload) {
@@ -1451,7 +1499,10 @@ function admSetTab(t) {
 }
 
 async function admLoadPeople() {
-  var res = await S.sb.from('profiles').select('id,agency_name,manager_name,email,role');
+  var res = await S.sb.from('profiles').select('id,username,agency_name,manager_name,email,role');
+  if (res.error && /username/i.test(res.error.message || '')) {
+    res = await S.sb.from('profiles').select('id,agency_name,manager_name,email,role');
+  }
   if (res.error) { console.warn('프로필 목록', res.error); return; }
   var map = {};
   (res.data || []).forEach(function (p) { map[p.id] = p; });
@@ -1474,18 +1525,18 @@ function admRenderMembers() {
   if (!el) return;
   var q = norm($('adm-mq').value || '');
   var list = adm.members.filter(function (m) {
-    return !q || norm([m.agency_name, m.manager_name, m.email].join(' ')).indexOf(q) >= 0;
+    return !q || norm([m.username, m.agency_name, m.manager_name, m.email].join(' ')).indexOf(q) >= 0;
   });
   if (!list.length) {
     el.innerHTML = '<div class="adm-empty">' + (adm.members.length ? '검색 결과가 없습니다.' : '아직 가입한 사무소가 없습니다.') + '</div>';
     return;
   }
-  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span></div>';
+  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>아이디 / 이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span></div>';
   el.innerHTML = head + list.map(function (m) {
     return '<button class="adm-mrow" type="button" data-uid="' + esc(m.user_id) + '">'
       + '<span class="am-name">' + esc(m.agency_name || '(사무소명 없음)') + '</span>'
       + '<span class="am-mgr">' + esc(m.manager_name || '—') + '</span>'
-      + '<span class="am-mail">' + esc(m.email || '—') + '</span>'
+      + '<span class="am-mail">' + esc(m.username || m.email || '—') + '</span>'
       + '<span class="am-cnt">' + Number(m.listing_count || 0).toLocaleString('ko-KR') + '호실</span>'
       + '<span class="am-last">' + esc(admWhen(m.last_activity)) + '</span>'
       + (m.role === 'admin' ? '<span class="am-badge">관리자</span>' : '<span class="am-last">일반</span>')
@@ -1499,7 +1550,7 @@ function admFillUserSelect() {
   if (!sel) return;
   var cur = sel.value;
   sel.innerHTML = '<option value="">전체 사무소</option>' + adm.members.map(function (m) {
-    return '<option value="' + esc(m.user_id) + '">' + esc(m.agency_name || m.email || m.user_id) + '</option>';
+    return '<option value="' + esc(m.user_id) + '">' + esc(m.agency_name || (m.username ? '(' + m.username + ')' : '') || m.email || m.user_id) + '</option>';
   }).join('');
   if (cur && adm.members.some(function (m) { return m.user_id === cur; })) sel.value = cur;
 }
@@ -1525,7 +1576,7 @@ async function admOpenOffice(uid) {
   var head = '<div class="of-head">'
     + '<button class="btn" type="button" id="of-back">← 목록</button>'
     + '<b>' + esc(m.agency_name || p.agency_name || '(사무소명 없음)') + '</b>'
-    + '<span>' + esc(m.manager_name || p.manager_name || '') + (p.email ? ' · ' + esc(p.email) : '') + '</span>'
+    + '<span>' + esc(m.manager_name || p.manager_name || '') + (p.username || m.username ? ' · ' + esc(p.username || m.username) : (p.email ? ' · ' + esc(p.email) : '')) + '</span>'
     + '<span>가입 ' + esc(admWhen(m.created_at)) + '</span></div>';
   var chips = '<div class="of-chips">'
     + '<span class="of-chip">전체 <b>' + rows.length + '</b></span>'
