@@ -1135,18 +1135,18 @@ function demoLogin(email, pw, username) {
   if (u.pw !== pw) return '비밀번호가 맞지 않습니다.';
   d.session = key; demoSave(d);
   enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, {
-    username: username, agency_name: u.agency, manager_name: u.manager, approved: u.approved !== false
+    username: username, agency_name: u.agency, manager_name: u.manager || '', approved: u.approved !== false
   });
   return '';
 }
-function demoSignup(email, pw, agency, manager, consent, username) {
+function demoSignup(email, pw, agency, consent, username) {
   var d = demoData(); d.users = d.users || {};
   var key = email.toLowerCase();
   if (d.users[key]) return '이미 쓰고 있는 아이디입니다. 로그인해 주세요.';
   if (!consent) return '백업·보관 동의에 체크해 주세요.';
-  d.users[key] = { pw: pw, agency: agency, manager: manager, approved: true, consentAt: new Date().toISOString() };
+  d.users[key] = { pw: pw, agency: agency, manager: '', approved: true, consentAt: new Date().toISOString() };
   d.session = key; demoSave(d);
-  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, { username: username, agency_name: agency, manager_name: manager, approved: true });
+  enterApp({ id: 'demo:' + key, email: isIdEmail(key) ? null : key }, { username: username, agency_name: agency, manager_name: '', approved: true });
   return '';
 }
 
@@ -1165,7 +1165,7 @@ $('form-login').addEventListener('submit', async function (e) {
   setMsg('li-msg', '');
   if (!input || !pw) { setMsg('li-msg', '아이디와 비밀번호를 입력해 주세요.'); return; }
   if (input.indexOf('@') < 0 && !idValid(idNorm(input))) {
-    setMsg('li-msg', '아이디는 한글·영문·숫자 2~20자입니다. (관리자는 이메일로 로그인)'); return;
+    setMsg('li-msg', '아이디는 한글·영문·숫자 2~20자입니다.'); return;
   }
   var email = loginEmail(input);
   $('li-go').disabled = true;
@@ -1189,12 +1189,11 @@ $('form-login').addEventListener('submit', async function (e) {
 $('form-signup').addEventListener('submit', async function (e) {
   e.preventDefault();
   var raw = str($('su-id').value), pw = $('su-pw').value;
-  var manager = str($('su-manager').value);
   var consent = $('su-consent').checked;
   setMsg('su-msg', '');
   if (!raw || !pw) { setMsg('su-msg', '아이디(상호명)와 비밀번호를 입력해 주세요.'); return; }
   if (raw.indexOf('@') >= 0) {
-    setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 이메일 대신 부동산 상호명을 아이디로 넣어 주세요.');
+    setMsg('su-msg', '아이디에는 @를 쓸 수 없습니다. 부동산 상호명을 아이디로 넣어 주세요.');
     $('su-id').focus(); return;
   }
   var username = idNorm(raw);
@@ -1207,13 +1206,12 @@ $('form-signup').addEventListener('submit', async function (e) {
   var email = idToEmail(username);
   if (pw.length < 4) { setMsg('su-msg', '비밀번호는 4자 이상으로 정해 주세요.'); return; }
   if (pw.length < 6) { setMsg('su-msg', '지금은 인증 서버 정책상 비밀번호를 6자 이상으로 정해야 합니다.'); return; }
-  if (!manager) { setMsg('su-msg', '담당자명을 입력해 주세요.'); return; }
   if (!consent) { setMsg('su-msg', '이용약관 및 데이터 보관 동의에 체크해 주세요.'); $('su-consent').focus(); return; }
   $('su-go').disabled = true;
   var consentAt = new Date().toISOString();
   try {
     if (!LIVE) {
-      var err = demoSignup(email, pw, agency, manager, consent, username);
+      var err = demoSignup(email, pw, agency, consent, username);
       if (err) setMsg('su-msg', err);
       return;
     }
@@ -1223,7 +1221,7 @@ $('form-signup').addEventListener('submit', async function (e) {
         emailRedirectTo: siteUrl(),
         data: {
           username: username,
-          agency_name: agency, manager_name: manager,
+          agency_name: agency, manager_name: '',
           consent: 'v1', consent_at: consentAt
         }
       }
@@ -1247,9 +1245,9 @@ $('form-reset').addEventListener('submit', async function (e) {
   e.preventDefault();
   var email = str($('rs-id').value);
   setMsg('rs-msg', '');
-  if (!email) { setMsg('rs-msg', '아이디 또는 관리자 이메일을 입력해 주세요.'); return; }
+  if (!email) { setMsg('rs-msg', '아이디를 입력해 주세요.'); return; }
   if (email.indexOf('@') < 0) {
-    setMsg('rs-msg', '아이디 회원은 비밀번호를 잊었을 때 관리자에게 초기화를 요청해 주세요. (재설정 메일은 관리자 이메일 계정에서만 받을 수 있습니다)', true);
+    setMsg('rs-msg', '아이디 계정은 운영자에게 비밀번호 초기화를 요청해 주세요.', true);
     return;
   }
   if (!LIVE) { setMsg('rs-msg', '데모 모드에는 비밀번호 재설정 메일이 없습니다. 새로 가입해 주세요.', true); return; }

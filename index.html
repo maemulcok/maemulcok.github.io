@@ -29,8 +29,8 @@
 
     <!-- 로그인 -->
     <form class="auth-form" id="form-login" autocomplete="on">
-      <label class="field"><span>아이디 (관리자는 이메일)</span>
-        <input id="li-id" type="text" autocomplete="username" placeholder="예: 김소장" required>
+      <label class="field"><span>아이디</span>
+        <input id="li-id" type="text" autocomplete="username" placeholder="예: 홍길동부동산" required>
       </label>
       <label class="field"><span>비밀번호</span>
         <input id="li-pw" type="password" autocomplete="current-password" placeholder="비밀번호" required>
@@ -42,14 +42,11 @@
 
     <!-- 회원가입 -->
     <form class="auth-form" id="form-signup" autocomplete="on" hidden>
-      <label class="field"><span>아이디 (부동산 상호명 · 예: 골드공인중개사)</span>
-        <input id="su-id" type="text" autocomplete="username" placeholder="예: 골드공인중개사" maxlength="20" required>
+      <label class="field"><span>아이디 (부동산 상호명)</span>
+        <input id="su-id" type="text" autocomplete="username" placeholder="예: 홍길동, 홍길동부동산" maxlength="20" required>
       </label>
       <label class="field"><span>비밀번호</span>
         <input id="su-pw" type="password" autocomplete="new-password" placeholder="6자 이상" required>
-      </label>
-      <label class="field"><span>담당자명</span>
-        <input id="su-manager" type="text" placeholder="예: 김민제" maxlength="20" required>
       </label>
       <div class="field"><span class="hint">아이디가 <b>사무소 이름</b>으로 표시됩니다. 한글·영문·숫자 2~20자, 공백·기호는 쓰지 않습니다. 비밀번호는 <b>6자 이상</b>.</span></div>
       <label class="consent" for="su-consent">
@@ -64,10 +61,10 @@
 
     <!-- 비밀번호 찾기 -->
     <form class="auth-form" id="form-reset" hidden>
-      <label class="field"><span>아이디 또는 관리자 이메일</span>
-        <input id="rs-id" type="text" autocomplete="username" placeholder="예: 김소장" required>
+      <label class="field"><span>아이디</span>
+        <input id="rs-id" type="text" autocomplete="username" placeholder="예: 홍길동부동산" required>
       </label>
-      <p class="auth-note" style="margin:2px 0 10px">아이디 회원은 비밀번호를 잊었을 때 <b>관리자에게 초기화를 요청</b>해 주세요. (재설정 메일은 <b>관리자 이메일 계정</b>으로만 발송됩니다)</p>
+      <p class="auth-note" style="margin:2px 0 10px">가입한 <b>아이디</b>를 넣어 주세요. 아이디 계정은 운영자에게 초기화를 요청할 수 있습니다.</p>
       <div class="auth-msg" id="rs-msg"></div>
       <button class="auth-go" type="submit" id="rs-go">재설정 메일 받기</button>
       <button class="auth-link" type="button" data-tab="login">로그인으로 돌아가기</button>
@@ -100,7 +97,7 @@
 <div class="help consent-dlg" id="consent-dlg">
   <h3>데이터 보관 안내</h3>
   <ul>
-    <li><b>무엇을</b> — 사무소명·담당자명·이메일, 그리고 직접 등록한 매물 기록(동·호수, 상태, 금액, 소유주·임차인·연락처, 메모).</li>
+    <li><b>무엇을</b> — 아이디(사무소명), 그리고 직접 등록한 매물 기록(동·호수, 상태, 금액, 소유주·임차인·연락처, 메모).</li>
     <li><b>왜</b> — 서버 장애나 실수로 지워졌을 때 되살리기 위한 정기 백업, 그리고 창업·운영상 장애 대응 목적입니다. 광고나 판매에 쓰지 않습니다.</li>
     <li><b>어디에</b> — 본인 계정만 열람할 수 있는 데이터베이스와, 관리자만 접근하는 암호화된 백업 파일(날짜별 JSON)에 보관합니다.</li>
     <li><b>관리자 열람·복구</b> — 장애 복구·백업·고객 지원을 위해 관리자가 데이터와 변경 이력을 열람할 수 있고, 실수로 지우거나 덮어쓴 호실 기록을 되살려 드릴 수 있습니다. 관리자가 복구한 내용도 변경 이력에 남습니다.</li>
@@ -317,6 +314,6 @@
 
 <script src="config.js?v=1"></script>
 <script src="board-data.js?v=1"></script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
