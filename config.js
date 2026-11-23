@@ -17,8 +17,8 @@ window.CENTUM_CONFIG = {
 
   /* 로그인 메일의 '비밀번호 재설정' 링크가 돌아올 주소.
      비워 두면 이 페이지의 현재 주소로 돌아옵니다.
-     예: 'https://minje920516-blip.github.io/centum-leel-saas/' */
-  SITE_URL: 'https://minje920516-blip.github.io/centum-leel-pro/',
+     예: 'https://maemulcok.github.io/' */
+  SITE_URL: 'https://maemulcok.github.io/',
 
   /* 배포본 이름 (내보내기 파일과 화면 하단에 표시) */
   APP_NAME: '매물콕',
