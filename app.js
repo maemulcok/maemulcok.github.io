@@ -113,7 +113,7 @@ function toast(msg) {
 }
 
 /* ---------- 배치표 인덱스 ---------- */
-var IDX = new Map(), LINE_TYPE = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = {};
+var IDX = new Map(), LINE_TYPE = {}, LINE_TY = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = {};
 
 /* 해운대아이파크 타입 색상 (평형대별) */
 var IPARK_COLOR = {
@@ -175,7 +175,7 @@ function setComplex(cx) {
 }
 
 function buildIndex() {
-  IDX = new Map(); LINE_TYPE = {}; DONG_CNT = {}; LINE_CNT = {};
+  IDX = new Map(); LINE_TYPE = {}; LINE_TY = {}; DONG_CNT = {}; LINE_CNT = {};
   (BOARD.units || []).forEach(function (u) {
     IDX.set(K(u[0], u[1], u[2]), { d: u[0], h: u[1], f: u[2], t: u[3], p: u[4], s: u[5], j: u[6] });
     var meta = DONG_META[u[0]];
@@ -186,6 +186,13 @@ function buildIndex() {
       var lk = u[0] + '-' + u[1];
       LINE_TYPE[lk + '#n'] = LINE_TYPE[lk + '#n'] || {};
       LINE_TYPE[lk + '#n'][u[3]] = (LINE_TYPE[lk + '#n'][u[3]] || 0) + 1;
+      /* 라인 안에서 층에 따라 평형이 바뀌는 곳(해운대아이파크 고층 등)을 잡기 위해
+         타입별 세대수와 가장 낮은 층·가장 높은 층을 함께 기록한다 */
+      var ty = LINE_TY[lk] || (LINE_TY[lk] = {});
+      var te = ty[u[3]] || (ty[u[3]] = { n: 0, minF: u[2], maxF: u[2] });
+      te.n++;
+      if (u[2] < te.minF) te.minF = u[2];
+      if (u[2] > te.maxF) te.maxF = u[2];
     }
   });
   /* 라인 대표 타입 = 가장 많은 호실의 타입 */
@@ -197,6 +204,20 @@ function buildIndex() {
     Object.keys(cnt).forEach(function (t) { if (cnt[t] > bn) { bn = cnt[t]; best = t; } });
     LINE_TYPE[lk] = best;
   });
+}
+/* 한 라인의 타입 구성 — 한 가지면 그대로, 두 가지 이상이면
+   가장 아래층 타입(좌)과 가장 위층 타입(우)을 대표로 돌려준다. */
+function lineTypeInfo(lk) {
+  var o = LINE_TY[lk];
+  if (!o) return null;
+  var ts = Object.keys(o);
+  if (!ts.length) return null;
+  if (ts.length === 1) return { t: ts[0] };
+  ts.sort(function (a, b) { return o[a].minF - o[b].minF || o[b].n - o[a].n; });
+  var low = ts[0];
+  var high = ts.slice(1).sort(function (a, b) { return o[b].maxF - o[a].maxF || o[b].n - o[a].n; })[0];
+  var more = ts.filter(function (t) { return t !== low && t !== high; });
+  return { split: true, low: low, high: high, more: more.join('·') };
 }
 function unitSup(u) { var a = AREA[u.t] || [0, 0, 0, 0, 0]; return (u && u.s != null) ? u.s : a[2]; }
 function unitJeon(u) { var a = AREA[u.t] || [0, 0, 0, 0, 0]; return (u && u.j != null) ? u.j : a[0]; }
@@ -454,9 +475,10 @@ function buildDong(d) {
       if (u) {
         var span = (u.t === '244') ? 2 : 1;
         var ho = hoNum(f, h);
+        /* 호실 칸은 미등록이면 순백(#ffffff). 타입·평형 색은 각 동 맨 아래 '타입' 행에만 넣는다.
+           상태 색(매매·전세·월세·보류)과 급매 테두리는 paintCell 이 붙이는 클래스로만 칠한다. */
         tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, h, f) + '" data-d="' + d
             + '" data-ho="' + h + '" data-f="' + f + '" data-t="' + u.t + '"'
-            + ' style="background:' + (TYPE_COLOR[u.t] || {}).bg + ';border-color:' + (TYPE_COLOR[u.t] || {}).bd + '"'
             + ' aria-label="' + d + '동 ' + ho + '호 ' + u.t + '타입"><span class="num">' + ho + '</span></td>';
         if (span === 2) h++;
       } else {
@@ -483,10 +505,23 @@ function buildDong(d) {
 
   html += '<tr class="sum typerow"><th>타입</th>';
   for (var j = 1; j <= cols; j++) {
-    var t = LINE_TYPE[d + '-' + j] || '';
-    var c = TYPE_COLOR[t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
-    html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + d + '동 ' + j + '호 라인 · ' + t + '타입">'
-          + t + (j === 1 && CX.id === 'centum' ? '<i class="b244">244</i>' : '') + '</td>';
+    var info = lineTypeInfo(d + '-' + j);
+    var badge = (j === 1 && CX.id === 'centum') ? '<i class="b244">244</i>' : '';
+    if (!info) {
+      html += '<td>' + badge + '</td>';
+    } else if (!info.split) {
+      var c = TYPE_COLOR[info.t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
+      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + d + '동 ' + j + '호 라인 · ' + info.t + '타입">'
+            + info.t + badge + '</td>';
+    } else {
+      /* 같은 라인에 평형이 섞여 있으면 대각선으로 나눠 좌=저층 평형, 우=고층 평형 */
+      var cl = TYPE_COLOR[info.low] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
+      var ch = TYPE_COLOR[info.high] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
+      html += '<td class="tsplit" style="background:linear-gradient(135deg,' + cl.bg + ' 49%,#ffffff 49.5%,#ffffff 50.5%,' + ch.bg + ' 51%);border-color:' + cl.bd + ';color:#1F2937"'
+            + ' title="' + d + '동 ' + j + '호 라인 · 저층 ' + info.low + ' · 고층 ' + info.high
+            + (info.more ? ' (사이 ' + info.more + ')' : '') + '">'
+            + info.low + '/' + info.high + badge + '</td>';
+    }
   }
   html += '</tr>';
   html += '<tr class="sum linerow"><th>라인</th>';
