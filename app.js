@@ -102,12 +102,15 @@ var IDX = new Map(), LINE_TYPE = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = BOARD.
 /* ---------- 메모(매물) 판정 ---------- */
 function stateOf(k) { var n = S.notes[k]; return n ? cleanState(n.s) : 'none'; }
 function memoOf(k) { var n = S.notes[k]; return n && n.memo ? n.memo : ''; }
-function hasInfo(k) {
-  var n = S.notes[k];
-  if (!n) return false;
-  return !!(str(n.memo) || str(n.price) || str(n.owner) || str(n.tenant) || str(n.phone) || n.urgent);
+function hasInfoNote(n) {
+  return !!(n && (str(n.memo) || str(n.price) || str(n.owner) || str(n.tenant) || str(n.phone) || n.urgent));
 }
-function isEmpty(n) { return !n || !hasInfo(n) && cleanState(n.s) === 'none'; }
+function hasInfo(k) {
+  return hasInfoNote(S.notes[k]);
+}
+/* 색을 고르지 않고 메모만 적은 호실도 빈 호실이 아니다.
+   (빈 값을 저장하면 서버에서 행을 지운다) */
+function isEmpty(n) { return !n || (!hasInfoNote(n) && cleanState(n.s) === 'none'); }
 function isUrgent(k) {
   var n = S.notes[k];
   if (!n) return false;
