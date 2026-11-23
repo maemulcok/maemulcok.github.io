@@ -52,6 +52,8 @@ var S = {
   chan: null,
   ready: false
 };
+/* 관리자가 다른 회원의 배치표를 읽기 전용으로 보고 있을 때 {uid, name, notes, office} */
+var RO = null;
 
 /* ---------- 작은 도구 ---------- */
 function $(id) { return document.getElementById(id); }
@@ -236,12 +238,16 @@ function Store() { return S.mode === 'live' ? CloudStore : DemoStore; }
 
 /* ---------- 저장 큐 ---------- */
 var flushT = null, inflight = false;
-function markDirty(k) { S.pending.add(k); scheduleFlush(500); mirrorSoon(); }
+function markDirty(k) {
+  if (RO) return;
+  S.pending.add(k); scheduleFlush(500); mirrorSoon();
+}
 function scheduleFlush(ms) {
   clearTimeout(flushT);
   flushT = setTimeout(flush, ms || 500);
 }
 async function flush() {
+  if (RO) { S.pending.clear(); return; }
   if (inflight) { scheduleFlush(600); return; }
   if (!S.pending.size) return;
   inflight = true;
@@ -273,12 +279,14 @@ async function flush() {
 var cacheKey = function () { return 'cls.cache.' + S.user.id; };
 var mirrorT = null;
 function mirrorSoon() {
+  if (RO) return;
   clearTimeout(mirrorT);
   mirrorT = setTimeout(function () {
     try { localStorage.setItem(cacheKey(), JSON.stringify(S.notes)); } catch (e) {}
   }, 400);
 }
 function mirrorNow() {
+  if (RO) return;
   try { localStorage.setItem(cacheKey(), JSON.stringify(S.notes)); } catch (e) {}
 }
 function cachedNotes() {
@@ -587,6 +595,19 @@ function setStatusUI(st) {
   document.querySelectorAll('#mc-stat button').forEach(function (b) { b.classList.toggle('on', b.dataset.s === st); });
   syncFieldUI(st);
 }
+/* 다른 회원의 배치표를 볼 때 메모장을 읽기 전용으로 바꾸고, 돌아오면 되돌린다 */
+function applyROView() {
+  var ro = !!RO;
+  mc.classList.toggle('ro', ro);
+  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).forEach(function (el) {
+    el.readOnly = ro;
+    if (ro) el.setAttribute('tabindex', '-1'); else el.removeAttribute('tabindex');
+  });
+  document.querySelectorAll('#mc-stat button').forEach(function (b) { b.disabled = ro; });
+  mcUrg.disabled = ro;
+  $('mc-del').hidden = ro;
+  if (ro) { mcSaved.textContent = '읽기 전용 · 보기만'; mcSaved.classList.add('on'); }
+}
 function syncFieldUI(st) {
   var rental = (st === 'jeonse' || st === 'wolse');
   mcFields.classList.toggle('rental', rental);
@@ -650,6 +671,7 @@ function openCard(td) {
   mcGye.innerHTML = '계약금 <b>5%</b> · <b>' + wonShort(Math.round(u.p * 0.05)) + '</b>';
   fillEditor(key);
   mcSaved.classList.remove('on');
+  applyROView();
 
   mc.classList.add('on');
   ov.classList.toggle('on', isNarrow());
@@ -667,7 +689,7 @@ function closeCard() {
   cur = null; curTd = null;
 }
 function writeNote(force) {
-  if (!cur) return;
+  if (!cur || RO) return;
   var sig = curSig();
   if (!force && sig === curBase) return;
   var txt = mcMemo.value, fld = readFields();
@@ -684,7 +706,7 @@ function writeNote(force) {
 }
 
 mcStat.addEventListener('click', function (e) {
-  var b = e.target.closest('button'); if (!b || !cur) return;
+  var b = e.target.closest('button'); if (!b || !cur || RO) return;
   var n = S.notes[cur] || { s: 'none' };
   n.s = cleanState(b.dataset.s);
   n.memo = mcMemo.value;
@@ -697,7 +719,7 @@ mcStat.addEventListener('click', function (e) {
   flashSaved('색상 저장');
 });
 mcUrg.onclick = function () {
-  if (!cur) return;
+  if (!cur || RO) return;
   var n = S.notes[cur] || { s: 'none' };
   var on = isUrgent(cur);
   n.urgent = on ? 0 : 1;
@@ -721,7 +743,7 @@ mcMemo.addEventListener('blur', function () { writeNote(false); });
 $('mc-x').onclick = closeCard;
 ov.onclick = closeCard;
 $('mc-del').onclick = function () {
-  if (!cur) return;
+  if (!cur || RO) return;
   if (!confirm('이 호실의 메모·금액·연락처·색상을 모두 지울까요?')) return;
   delete S.notes[cur];
   mcMemo.value = ''; FIELDS.forEach(function (f) { mcIn[f].value = ''; });
@@ -872,7 +894,8 @@ function exportMap() {
   Object.keys(S.notes).forEach(function (k) { if (hasInfo(k) || stateOf(k) !== 'none') out[k] = S.notes[k]; });
   return out;
 }
-$('btn-export').onclick = function () {
+var $exportBtn = $('btn-export');
+if ($exportBtn) $exportBtn.onclick = function () {
   if (cur) writeNote(true);
   var notes = exportMap(), keys = Object.keys(notes);
   var out = {
@@ -888,6 +911,9 @@ $('btn-export').onclick = function () {
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
   toast(keys.length + '호실을 파일로 내보냈습니다.');
 };
+
+/* 내보내기·불러오기 버튼은 화면에서 빠졌다(관리자 백업은 admin_backup.py·서버 자동 저장이 대신한다).
+   버튼이 다시 생기면 아래 동작이 그대로 연결된다. */
 
 function normNote(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -910,8 +936,9 @@ function normNote(raw) {
   return isEmpty(n) ? null : n;
 }
 
-$('btn-import').onclick = function () { $('file').click(); };
-$('file').addEventListener('change', function (e) {
+var $importBtn = $('btn-import'), $fileIn = $('file');
+if ($importBtn && $fileIn) $importBtn.onclick = function () { $fileIn.click(); };
+if ($fileIn) $fileIn.addEventListener('change', function (e) {
   var f = e.target.files[0]; if (!f) return;
   var r = new FileReader();
   r.onload = async function () {
@@ -950,6 +977,7 @@ $('file').addEventListener('change', function (e) {
 });
 
 $('btn-reset').onclick = async function () {
+  if (RO) return;
   if (!Object.keys(exportMap()).length) { toast('비울 매물이 없습니다.'); return; }
   if (!confirm('내 계정에 저장된 매물 기록을 모두 지웁니다.\n되돌릴 수 없습니다. 먼저 JSON으로 백업해 두셨나요?')) return;
   try {
@@ -973,6 +1001,7 @@ var SAMPLE = [
   ['101-4-40', { s: 'sale', price: '1억 7,610', owner: '', phone: '', memo: '' }]
 ];
 $('btn-sample').onclick = function () {
+  if (RO) return;
   var t = Date.now();
   var entries = SAMPLE.map(function (p) {
     return [p[0], Object.assign({ ut: t }, p[1])];
@@ -1027,9 +1056,11 @@ async function signOut() {
   if (!LIVE) localStorage.removeItem('cls.demo.session');
   S.user = null; S.profile = null; S.notes = {}; S.pending.clear(); cur = null;
   S.ready = false; built = false; cellMap.clear();
+  if (RO) { RO = null; $('robar').hidden = true; $('btn-reset').hidden = false; document.body.classList.remove('ro'); }
   admClose(); $('btn-admin').hidden = true;
   mc.classList.remove('on'); ov.classList.remove('on'); showHelp(false);
   $('app').hidden = true; $('pending').hidden = true;
+  resetAuthForms();
   showAuth('login');
 }
 $('btn-logout').onclick = async function () {
@@ -1071,6 +1102,28 @@ function setMsg(id, text, ok) {
   el.textContent = text || '';
   el.classList.toggle('ok', !!ok);
   el.classList.remove('on');
+}
+/* 로그인·회원가입·비번찾기 입력칸을 모두 빈칸·체크해제로 되돌린다
+   (가입 성공 뒤, 로그아웃 뒤, 로그인 ↔ 회원가입 ↔ 비번찾기 탭을 옴길 때) */
+function resetAuthForms() {
+  ['form-login', 'form-signup', 'form-reset', 'form-newpw'].forEach(function (id) {
+    var f = $(id); if (!f) return;
+    try { f.reset(); } catch (e) {}
+    f.querySelectorAll('input').forEach(function (i) {
+      if (i.type === 'checkbox' || i.type === 'radio') i.checked = false;
+      else i.value = '';
+    });
+  });
+  var c = $('su-consent');
+  if (c) {
+    c.checked = false;
+    var wrap = c.closest('.consent');
+    if (wrap) wrap.classList.remove('on');
+  }
+  ['li-msg', 'su-msg', 'rs-msg', 'np-msg'].forEach(function (m) { setMsg(m, ''); });
+  ['li-go', 'su-go', 'rs-go', 'np-go'].forEach(function (b) {
+    var el = $(b); if (el) el.disabled = false;
+  });
 }
 /* ---------- 아이디 ↔ 내부 주소 ----------
    일반 회원은 이메일 없이 '아이디'로 가입·로그인합니다.
@@ -1166,6 +1219,7 @@ document.querySelectorAll('[data-tab]').forEach(function (b) {
   b.addEventListener('click', function () {
     var t = b.dataset.tab;
     if (t === 'signup' && !LIVE && Object.keys(demoUsers()).length >= 0) { /* 데모에서도 가입 가능 */ }
+    resetAuthForms();
     showAuth(t);
   });
 });
@@ -1280,7 +1334,7 @@ $('form-signup').addEventListener('submit', async function (e) {
   try {
     if (!LIVE) {
       var err = demoSignup(username, mail, pw, agency, consent);
-      if (err) setMsg('su-msg', err);
+      if (err) setMsg('su-msg', err); else resetAuthForms();
       return;
     }
     /* 같은 아이디가 이미 있는지 먼저 묻고 친절하게 알려 준다 */
@@ -1303,10 +1357,11 @@ $('form-signup').addEventListener('submit', async function (e) {
     });
     if (res.error) { setMsg('su-msg', signupErr(res.error)); return; }
     if (res.data.session) {
+      resetAuthForms();
       await enterApp(res.data.user);
     } else {
+      resetAuthForms();
       setMsg('su-msg', '가입 확인 메일을 보냈습니다. 메일함에서 확인 링크를 누른 뒤 로그인해 주세요.', true);
-      $('form-signup').reset();
     }
   } catch (ex) {
     setMsg('su-msg', authErr(ex));
@@ -1459,7 +1514,7 @@ async function loadProfile(user) {
 }
 
 function onRemoteChange(payload) {
-  if (!S.user) return;
+  if (!S.user || RO) return;
   if (payload.eventType === 'DELETE') {
     var k0 = payload.old && payload.old.unit_key;
     if (!k0) return;
@@ -1487,7 +1542,7 @@ document.addEventListener('visibilitychange', function () {
     if (S.pending.size) flush();
     return;
   }
-  if (!S.ready || !LIVE || S.pending.size) return;
+  if (!S.ready || !LIVE || S.pending.size || RO) return;
   Store().loadAll().then(function (rows) {
     S.notes = rows; mirrorNow(); paintAll(); applyFilters();
   }).catch(function () {});
@@ -1638,19 +1693,40 @@ function admRenderMembers() {
     el.innerHTML = '<div class="adm-empty">' + (adm.members.length ? '검색 결과가 없습니다.' : '아직 가입한 사무소가 없습니다.') + '</div>';
     return;
   }
-  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>아이디 / 이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span></div>';
+  var head = '<div class="adm-mhead"><span>사무소</span><span>담당자</span><span>아이디 / 이메일</span><span style="text-align:right">매물</span><span style="text-align:right">마지막 활동</span><span style="text-align:right">권한</span><span></span></div>';
   el.innerHTML = head + list.map(function (m) {
-    return '<button class="adm-mrow" type="button" data-uid="' + esc(m.user_id) + '">'
+    var isAdmin = (m.role === 'admin');
+    var mine = !!(S.user && m.user_id === S.user.id);
+    var del = (isAdmin || mine) ? '' :
+      '<button class="adm-mdel" type="button" data-del="' + esc(m.user_id) + '" title="이 회원과 매물·이력을 완전히 삭제">회원 삭제</button>';
+    return '<div class="adm-mrow" role="button" tabindex="0" data-uid="' + esc(m.user_id) + '">'
       + '<span class="am-name">' + esc(m.agency_name || '(사무소명 없음)') + '</span>'
       + '<span class="am-mgr">' + esc(m.manager_name || '—') + '</span>'
       + '<span class="am-mail">' + esc(m.username || m.email || '—') + '</span>'
       + '<span class="am-cnt">' + Number(m.listing_count || 0).toLocaleString('ko-KR') + '호실</span>'
       + '<span class="am-last">' + esc(admWhen(m.last_activity)) + '</span>'
-      + (m.role === 'admin' ? '<span class="am-badge">관리자</span>' : '<span class="am-last">일반</span>')
-      + '</button>';
-  }).join('');  el.querySelectorAll('[data-uid]').forEach(function (b) {
-    b.onclick = function () { admOpenOffice(b.dataset.uid); };
+      + (isAdmin ? '<span class="am-badge">관리자</span>' : '<span class="am-last">일반</span>')
+      + del
+      + '</div>';
+  }).join('');
+  el.querySelectorAll('.adm-mrow').forEach(function (b) {
+    b.onclick = function (e) {
+      if (e.target && e.target.closest && e.target.closest('[data-del]')) return;
+      admOpenOffice(b.dataset.uid);
+    };
+    b.onkeydown = function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); admOpenOffice(b.dataset.uid); }
+    };
   });
+  el.querySelectorAll('[data-del]').forEach(function (b) {
+    b.onclick = function (e) {
+      if (e.stopPropagation) e.stopPropagation();
+      admDeleteMember(b.dataset.del, b);
+    };
+  });
+}
+function admMember(uid) {
+  return (adm.members || []).filter(function (x) { return x.user_id === uid; })[0] || {};
 }
 function admFillUserSelect() {
   var sel = $('adm-user');
@@ -1685,11 +1761,16 @@ async function admOpenOffice(uid) {
     cnt[cleanState(r.status)]++;
     if (r.urgent) cnt.urg++;
   });
+  var canDel = (m.role !== 'admin') && !(S.user && S.user.id === uid);
   var head = '<div class="of-head">'
     + '<button class="btn" type="button" id="of-back">← 목록</button>'
     + '<b>' + esc(m.agency_name || p.agency_name || '(사무소명 없음)') + '</b>'
     + '<span>' + esc(m.manager_name || p.manager_name || '') + (p.username || m.username ? ' · ' + esc(p.username || m.username) : (p.email ? ' · ' + esc(p.email) : '')) + '</span>'
-    + '<span>가입 ' + esc(admWhen(m.created_at)) + '</span></div>';
+    + '<span>가입 ' + esc(admWhen(m.created_at)) + '</span>'
+    + '<span class="of-sp"></span>'
+    + '<button class="btn primary" type="button" id="of-board">배치표 보기</button>'
+    + (canDel ? '<button class="btn adm-del" type="button" id="of-del">회원 삭제</button>' : '')
+    + '</div>';
   var chips = '<div class="of-chips">'
     + '<span class="of-chip">전체 <b>' + rows.length + '</b></span>'
     + '<span class="of-chip">매매 <b>' + cnt.sale + '</b></span>'
@@ -1719,12 +1800,120 @@ async function admOpenOffice(uid) {
   box.innerHTML = '<div class="of-wrap"><div class="of-main">' + head + chips + table + '</div>' + hist + '</div>';
   admRenderUserLogs();
   $('of-hist-refresh').onclick = function () { admOpenOffice(uid); };
+  $('of-board').onclick = function () { admViewBoard(uid, $('of-board')); };
+  if ($('of-del')) $('of-del').onclick = function () { admDeleteMember(uid, $('of-del')); };
   $('of-back').onclick = function () {
     box.hidden = true;
     $('adm-members').hidden = false;
     adm.openUser = null;
   };
 }
+
+/* ============================================================
+   회원 완전 삭제 (관리자 전용 · 되돌릴 수 없음)
+   ============================================================ */
+async function admDeleteMember(uid, btn) {
+  if (!admOk() || adm.busy || RO) return;
+  var m = admMember(uid), p = adm.people[uid] || {};
+  if (m.role === 'admin' || p.role === 'admin' || (S.user && S.user.id === uid)) {
+    toast('관리자 계정은 삭제할 수 없습니다.');
+    return;
+  }
+  var name = m.agency_name || m.username || p.agency_name || p.username || '(사무소명 없음)';
+  var cnt = Number(m.listing_count || 0);
+  var msg = name + (cnt ? ' · 매물 ' + cnt.toLocaleString('ko-KR') + '호실' : '') + '\n\n'
+    + '이 회원과 등록된 모든 매물·이력을 완전히 삭제할까요? 되돌릴 수 없습니다.';
+  if (!confirm(msg)) return;
+  adm.busy = true;
+  if (btn) { btn.disabled = true; btn.textContent = '삭제 중…'; }
+  try {
+    var res = await S.sb.rpc('admin_delete_member', { p_user_id: uid });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+    var lc = Number(d.listings || 0);
+    toast((d.name || name) + ' 회원을 삭제했습니다' + (lc ? ' · 매물 ' + lc.toLocaleString('ko-KR') + '호실' : '') + '.');
+    adm.openUser = null;
+    adm.userLogs = [];
+    var box = $('adm-office');
+    box.hidden = true; box.innerHTML = '';
+    $('adm-members').hidden = false;
+    adm.logsLoaded = false;
+    admLoadMembers();
+    admRefreshCount();
+    if (adm.tab === 'logs') admLoadLogs(true);
+  } catch (e) {
+    console.warn('회원 삭제 실패', e);
+    toast('삭제하지 못했습니다: ' + ((e && e.message) || '연결을 확인해 주세요.'));
+  } finally {
+    adm.busy = false;
+    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = '회원 삭제'; }
+  }
+}
+
+/* ============================================================
+   회원 배치표 열람 — 101~106동 그리드에 그 회원의 매물을 읽기 전용으로
+   ============================================================ */
+async function admViewBoard(uid, btn) {
+  if (!admOk() || RO) return;
+  var m = admMember(uid), p = adm.people[uid] || {};
+  var name = m.agency_name || p.agency_name || m.username || p.username || '(사무소명 없음)';
+  if (btn) { btn.disabled = true; btn.textContent = '불러오는 중…'; }
+  var res = await S.sb.from('listings').select('*').eq('user_id', uid).order('unit_key');
+  if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = '배치표 보기'; }
+  if (res.error) {
+    toast('매물을 읽지 못했습니다: ' + (res.error.message || ''));
+    return;
+  }
+  /* 내가 쓰던 메모장·저장 대기열을 먼저 정리한다 */
+  if (cur) { mc.classList.remove('on'); ov.classList.remove('on'); cur = null; curTd = null; selectCell(null); }
+  try { if (S.pending.size && !RO) await flush(); } catch (e) {}
+  var notes = {};
+  (res.data || []).forEach(function (r) { notes[r.unit_key] = rowToNote(r); });
+  RO = {
+    uid: uid, name: name, notes: notes,
+    office: $('hd-office').textContent
+  };
+  admClose();
+  S.notes = notes;
+  S.pending.clear();
+  $('ro-name').textContent = name;
+  $('robar').hidden = false;
+  $('btn-reset').hidden = true;
+  $('btn-sample').hidden = true;
+  $('hd-office').textContent = name;
+  document.title = '👁️ ' + name + ' 배치표 · 센텀르엘 (매물)';
+  document.body.classList.add('ro');
+  paintAll(); applyFilters();
+  window.scrollTo({ top: 0 });
+  applyZoom();
+  toast(name + ' 배치표 · ' + Object.keys(notes).length.toLocaleString('ko-KR') + '호실 (읽기 전용)');
+}
+
+async function roExit() {
+  if (!RO) return;
+  var back = RO.uid, office = RO.office;
+  if (cur) { mc.classList.remove('on'); ov.classList.remove('on'); cur = null; curTd = null; selectCell(null); }
+  RO = null;
+  $('robar').hidden = true;
+  $('btn-reset').hidden = false;
+  document.body.classList.remove('ro');
+  if (office) $('hd-office').textContent = office;
+  document.title = (office || '센텀르엘 (매물)') + ' · 센텀르엘 (매물)';
+  /* 내 배치표로 되돌린다 */
+  S.pending.clear();
+  S.notes = cachedNotes();
+  paintAll(); applyFilters();
+  admOpen();
+  admOpenOffice(back);
+  try {
+    var rows = await Store().loadAll();
+    if (RO) return;
+    S.notes = rows; mirrorNow(); paintAll(); applyFilters();
+  } catch (e) {
+    console.warn('내 매물을 다시 읽지 못했습니다.', e);
+  }
+}
+$('ro-back').onclick = function () { roExit(); };
 
 /* 회원 한 명의 등록·수정·삭제·메모 이력 (우측 패널) */
 function admRenderUserLogs() {
