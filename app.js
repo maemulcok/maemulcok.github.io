@@ -108,7 +108,12 @@ var ST_NAME = { none: '미확인', sale: '매매', jeonse: '전세', wolse: '월
 var ST_COLOR = { none: '#ffffff', sale: '#FEF08A', jeonse: '#BAE6FD', wolse: '#E9D5FF', done: '#FCA5A5' };
 var ST_BORDER = { none: '#b9c2cc', sale: '#d9b421', jeonse: '#56b6e0', wolse: '#c084fc', done: '#e88' };
 var URG_RE = /급내|급매/;
-var FIELDS = ['price', 'owner', 'tenant', 'phone', 'tphone', 'end'];
+/* 복수로 함께 고를 수 있는 상태 — 이 순서대로 대각선 색을 나눈다(매매 → 전세 → 월세).
+   보류·완료는 단독, 기본은 선택 없음이다. */
+var ST_ORDER = ['sale', 'jeonse', 'wolse'];
+var PRICE_LBL = { sale: '매매가', jeonse: '전세 보증금', wolse: '월세 보증금·월세', etc: '금액' };
+/* price 는 상태별(ps)로 나눠 담고, 아래 목록은 금액을 뺀 나머지 칸이다 */
+var FIELDS = ['owner', 'tenant', 'phone', 'tphone', 'end'];
 
 var COARSE = (function () { try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
 var MQ_NARROW = window.matchMedia('(max-width: 900px)');
@@ -138,6 +143,47 @@ function esc(s) {
 function str(v) { return v == null ? '' : String(v).trim(); }
 function cleanState(s) {
   return (s === 'sale' || s === 'jeonse' || s === 'wolse' || s === 'done') ? s : 'none';
+}
+/* 복합 상태 정규화 — 배열이든 'sale,jeonse' 같은 문자열이든 [sale,jeonse] 로.
+   매매·전세·월세는 2~3개를 함께 고를 수 있고, 보류·완료는 단독 선택이다. */
+function cleanStates(v) {
+  var raw = Array.isArray(v) ? v : String(v == null ? '' : v).split(/[^a-z]+/);
+  if (raw.indexOf('done') >= 0) return ['done'];
+  var out = [];
+  ST_ORDER.forEach(function (s) { if (raw.indexOf(s) >= 0 && out.indexOf(s) < 0) out.push(s); });
+  return out;
+}
+function statesFromNote(n) {
+  if (!n) return [];
+  if (n.ss != null) return cleanStates(n.ss);
+  var st = cleanState(n.s);
+  return st === 'none' ? [] : [st];
+}
+function statesLabel(ss) {
+  var a = cleanStates(ss);
+  return a.length ? a.map(function (s) { return ST_NAME[s]; }).join('+') : ST_NAME.none;
+}
+/* 전세·월세가 들어 있는 복합 매물이면 만기 알림에 어느 이름으로 보일지 고른다 */
+function leaseState(n) {
+  var ss = statesFromNote(n);
+  if (ss.indexOf('jeonse') >= 0) return 'jeonse';
+  if (ss.indexOf('wolse') >= 0) return 'wolse';
+  return '';
+}
+/* 금액은 상태별로 따로 적는다 (매매가 / 전세 보증금 / 월세 보증금·월세)
+   상태가 없는 기본·보류는 etc 한 칸을 쓴다. */
+function priceKeyOf(st) { return (st === 'sale' || st === 'jeonse' || st === 'wolse') ? st : 'etc'; }
+function pricesOf(n) { return (n && n.ps && typeof n.ps === 'object') ? n.ps : {}; }
+function primaryPrice(n) {
+  var ps = pricesOf(n), ss = statesFromNote(n), v = '';
+  ss.forEach(function (s) { if (!v) v = str(ps[s]); });
+  return v || str(ps.etc);
+}
+function priceText(ss, ps) {
+  var arr = cleanStates(ss), parts = [];
+  arr.forEach(function (s) { var v = str(ps[s]); if (v) parts.push((arr.length > 1 ? PRICE_LBL[s] + ' ' : '') + v); });
+  if (!parts.length && str(ps.etc)) parts.push(str(ps.etc));
+  return parts.join(' · ');
 }
 function K(d, h, f) { return d + '-' + h + '-' + f; }
 /* 동 이름: 센텀르엘·아이파크는 '101동'·'1동', 제니스는 내부 id 201~203을 '101동'으로 보인다 */
@@ -344,32 +390,41 @@ function unitSup(u) { var a = AREA[u.t] || [0, 0, 0, 0, 0]; return (u && u.s != 
 function unitJeon(u) { var a = AREA[u.t] || [0, 0, 0, 0, 0]; return (u && u.j != null) ? u.j : a[0]; }
 
 /* ---------- 메모(매물) 판정 ---------- */
-function stateOf(k) { var n = S.notes[k]; return n ? cleanState(n.s) : 'none'; }
+function stateOf(k) { return primaryOf(statesOf(k)); }
+function primaryOf(ss) { var a = cleanStates(ss); return a.length ? a[0] : 'none'; }
+function statesOf(k) { return statesFromNote(S.notes[k]); }
 function memoOf(k) { var n = S.notes[k]; return n && n.memo ? n.memo : ''; }
 function hasInfoNote(n) {
-  return !!(n && (str(n.memo) || str(n.price) || str(n.owner) || str(n.tenant) || str(n.phone) || str(n.tphone) || str(n.end) || n.urgent));
+  if (!n) return false;
+  if (str(n.memo) || str(n.owner) || str(n.tenant) || str(n.phone) || str(n.tphone) || str(n.end) || n.urgent || n.op) return true;
+  var ps = pricesOf(n);
+  return !!(str(ps.sale) || str(ps.jeonse) || str(ps.wolse) || str(ps.etc) || str(n.price));
 }
 function hasInfo(k) {
   return hasInfoNote(S.notes[k]);
 }
 /* 색을 고르지 않고 메모만 적은 호실도 빈 호실이 아니다.
    (빈 값을 저장하면 서버에서 행을 지운다) */
-function isEmpty(n) { return !n || (!hasInfoNote(n) && cleanState(n.s) === 'none'); }
+function isEmpty(n) { return !n || (!hasInfoNote(n) && statesFromNote(n).length === 0); }
 function isUrgent(k) {
   var n = S.notes[k];
   if (!n) return false;
   if (n.urgent) return true;
-  return URG_RE.test(str(n.memo) + ' ' + str(n.price));
+  return URG_RE.test(str(n.memo) + ' ' + primaryPrice(n));
 }
+/* 타부동산 — 급매와 중복해서 표시할 수 있다 */
+function isOtherProp(k) { var n = S.notes[k]; return !!(n && n.op); }
 function fieldText(k) {
   var n = S.notes[k]; if (!n) return '';
-  var st = cleanState(n.s), rental = (st === 'jeonse' || st === 'wolse'), parts = [];
-  if (str(n.price)) parts.push((st === 'sale' ? '매매가 P ' : rental ? '보증금·월세 ' : '금액 ') + str(n.price));
+  var ss = statesFromNote(n), rental = (ss.indexOf('jeonse') >= 0 || ss.indexOf('wolse') >= 0), parts = [];
+  var ps = pricesOf(n), pt = priceText(ss, ps);
+  if (pt) parts.push(ss.length === 1 && ss[0] === 'sale' ? '매매가 P ' + pt : pt);
   if (str(n.owner)) parts.push((rental ? '임대인 ' : '소유주 ') + str(n.owner));
   if (str(n.phone)) parts.push((rental ? '임대인 연락처 ' : '연락처 ') + str(n.phone));
   if (str(n.tenant)) parts.push('임차인 ' + str(n.tenant));
   if (str(n.tphone)) parts.push('임차인 연락처 ' + str(n.tphone));
   if (str(n.end)) parts.push('만기 ' + str(n.end));
+  if (n.op) parts.push('타부동산');
   return parts.join(' · ');
 }
 
@@ -377,13 +432,21 @@ function fieldText(k) {
    저장소 — 데모(브라우저) / 운영(Supabase)
    ============================================================ */
 function noteToRow(k, n) {
-  var cx = cxByKey(k);
+  var cx = cxByKey(k), ss = statesFromNote(n), ps = pricesOf(n), prices = {}, any = false;
+  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) {
+    var v = str(ps[p]); if (v) { prices[p] = v; any = true; }
+  });
   return {
     user_id: S.user.id,
     unit_key: k,
     complex: cx ? cx.id : 'centum',
-    status: cleanState(n.s),
-    price: str(n.price) || null,
+    status: primaryOf(ss),
+    /* 예전 앱·기존 데이터와 호환: status 는 대표 상태 하나만 담고,
+       복합 상태(statuses)·상태별 금액(prices)·타부동산(other_prop)은 따로 둔다 */
+    statuses: ss.length > 1 ? ss.join(',') : null,
+    prices: any ? prices : null,
+    other_prop: !!n.op,
+    price: primaryPrice(n) || null,
     owner_name: str(n.owner) || null,
     tenant_name: str(n.tenant) || null,
     tenant_phone: str(n.tphone) || null,
@@ -393,10 +456,20 @@ function noteToRow(k, n) {
     urgent: !!n.urgent
   };
 }
+function rowStates(r) {
+  var ss = cleanStates(r.statuses);
+  if (!ss.length) { var st = cleanState(r.status); if (st !== 'none') ss = [st]; }
+  return ss;
+}
 function rowToNote(r) {
+  var ss = rowStates(r), ps = (r.prices && typeof r.prices === 'object') ? r.prices : {}, out = {};
+  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { if (str(ps[p])) out[p] = str(ps[p]); });
+  if (!Object.keys(out).length && str(r.price)) out[priceKeyOf(ss.length ? ss[0] : cleanState(r.status))] = str(r.price);
   return {
-    s: cleanState(r.status),
-    price: str(r.price),
+    s: ss.length ? ss[0] : 'none',
+    ss: ss,
+    ps: out,
+    price: primaryPrice({ ss: ss, ps: out }),
     owner: str(r.owner_name),
     tenant: str(r.tenant_name),
     tphone: str(r.tenant_phone),
@@ -404,6 +477,7 @@ function rowToNote(r) {
     phone: str(r.phone),
     memo: str(r.memo),
     urgent: r.urgent ? 1 : 0,
+    op: r.other_prop ? 1 : 0,
     ut: Date.parse(r.updated_at) || 0
   };
 }
@@ -450,12 +524,19 @@ var CloudStore = {
       if (del.error) throw del.error;
       return 0;
     }
+    var row = noteToRow(k, n);
     var res = await S.sb.from('listings')
-      .upsert(noteToRow(k, n), { onConflict: 'user_id,unit_key' })
+      .upsert(row, { onConflict: 'user_id,unit_key' })
       .select('updated_at').single();
     if (res.error && /complex/i.test(res.error.message || '')) {
       /* 아직 complex 컬럼 마이그레이션 전이면 컬럼 없이 저장한다 */
-      var row = noteToRow(k, n); delete row.complex;
+      delete row.complex;
+      res = await S.sb.from('listings').upsert(row, { onConflict: 'user_id,unit_key' })
+        .select('updated_at').single();
+    }
+    if (res.error && /statuses|prices|other_prop/i.test(res.error.message || '')) {
+      /* 복합 상태 컬럼 이전에 만든 DB여도 대표 색·금액만은 저장된다 */
+      ['statuses', 'prices', 'other_prop'].forEach(function (c) { delete row[c]; });
       res = await S.sb.from('listings').upsert(row, { onConflict: 'user_id,unit_key' })
         .select('updated_at').single();
     }
@@ -470,6 +551,11 @@ var CloudStore = {
       for (var i = 0; i < keys.length; i += 200) {
         var chunk = keys.slice(i, i + 200).map(function (k) { return noteToRow(k, map[k]); });
         var res = await S.sb.from('listings').insert(chunk);
+        if (res.error && /statuses|prices|other_prop/i.test(res.error.message || '')) {
+          /* 복합 상태 컬럼 이전에 만든 DB — 대표 상태·금액만 넣는다 */
+          chunk.forEach(function (r) { ['statuses', 'prices', 'other_prop'].forEach(function (c) { delete r[c]; }); });
+          res = await S.sb.from('listings').insert(chunk);
+        }
         if (res.error) throw res.error;
       }
     } catch (e) {
@@ -668,30 +754,12 @@ function buildDong(d) {
   html += '</tbody></table>';
   box.innerHTML = html;
   box.querySelectorAll('td.c[data-k]').forEach(function (td) { cellMap.set(td.dataset.k, td); });
-  markSilhouette(box, specialRows);
   return box;
 }
 
-/* 실제 호실이 있는 칸의 바깥 변(하늘·바닥과 맞닿은 변)에만 동 색을 준다.
-   빈 하늘 칸(td.fx:empty)은 그대로 두므로 건물 실루엣을 따라서만 테두리가 그려지고,
-   동 안쪽 호실 사이의 격자선은 지금처럼 연한 회색으로 남는다. */
-function markSilhouette(box, specialRows) {
-  var cells = Array.prototype.slice.call(box.querySelectorAll('td.c[data-k]'));
-  var occ = Object.create(null);
-  var spel = Object.create(null);
-  (specialRows || []).forEach(function (f) { spel[f] = 1; });
-  cells.forEach(function (td) {
-    var h = +td.dataset.ho, f = +td.dataset.f, sp = td.colSpan || 1;
-    for (var i = 0; i < sp; i++) occ[(h + i) + '_' + f] = 1;
-  });
-  cells.forEach(function (td) {
-    var h = +td.dataset.ho, f = +td.dataset.f, sp = td.colSpan || 1;
-    if (!spel[f + 1] && !occ[h + '_' + (f + 1)]) td.classList.add('e-t');
-    if (!occ[(h + sp) + '_' + f]) td.classList.add('e-r');
-    if (!spel[f - 1] && !occ[h + '_' + (f - 1)]) td.classList.add('e-b');
-    if (!occ[(h - 1) + '_' + f]) td.classList.add('e-l');
-  });
-}
+/* 동 구분은 .dong 카드의 바깥 사각형 테두리·동 제목·동 이름 띠만으로 한다.
+   (2026-11-24 사용자 요청) 예전에는 호실이 없는 안쪽 빈 공간마다 동 색 2px 선을
+   그려 건물 내부에 세로 줄무늬·네모가 생겼으므로 그 계산(markSilhouette)을 없췄다. */
 
 var built = false;
 function buildBoard() {
@@ -788,12 +856,39 @@ function paintUrgent(td, on) {
     td.classList.remove('is-urgent');
   }
 }
+function paintOther(td, on) {
+  var el = td.querySelector('.op');
+  if (on) {
+    if (!el) { el = document.createElement('i'); el.className = 'op'; el.textContent = '✓'; td.appendChild(el); }
+  } else if (el) el.remove();
+  td.classList.toggle('is-other', !!on);
+}
+/* 2~3색 대각선 분할 — 지금 쓰는 매매·전세·월세 색을 그대로 나눈다 */
+function stateGradient(ss) {
+  var a = cleanStates(ss), c = a.map(function (s) { return ST_COLOR[s] || '#ffffff'; });
+  if (c.length === 2) return 'linear-gradient(135deg,' + c[0] + ' 50%,' + c[1] + ' 50%)';
+  if (c.length >= 3) return 'linear-gradient(135deg,' + c[0] + ' 0 33.33%,' + c[1] + ' 33.33% 66.66%,' + c[2] + ' 66.66% 100%)';
+  return '';
+}
 function paintCell(k) {
   var td = cellMap.get(k); if (!td) return;
-  var st = stateOf(k);
-  td.classList.remove('s-sale', 's-jeonse', 's-wolse', 's-done');
-  if (st !== 'none') td.classList.add('s-' + st);
+  var ss = statesOf(k);
+  td.classList.remove('s-sale', 's-jeonse', 's-wolse', 's-done', 'st-multi');
+  if (ss.length === 1) {
+    td.classList.add('s-' + ss[0]);
+    td.style.background = '';
+    td.style.color = '';
+  } else if (ss.length > 1) {
+    /* 여러 상태면 칸 배경을 대각선으로 나눈다 (글자색은 기본색) */
+    td.classList.add('st-multi');
+    td.style.background = stateGradient(ss);
+    td.style.color = '#16202b';
+  } else {
+    td.style.background = '';
+    td.style.color = '';
+  }
   paintUrgent(td, isUrgent(k));
+  paintOther(td, isOtherProp(k));
 }
 function paintAll() { cellMap.forEach(function (td, k) { paintCell(k); }); updateCounts(); }
 
@@ -810,17 +905,17 @@ function curFilter() {
 function isMatch(td, st, f) {
   if (f.dg && td.dataset.d !== f.dg) return false;
   if (f.ty && td.dataset.t !== f.ty) return false;
-  if (f.st === 'sale' && st !== 'sale') return false;
-  if (f.st === 'jeonse' && st !== 'jeonse') return false;
-  if (f.st === 'wolse' && st !== 'wolse') return false;
-  if (f.st === 'done' && st !== 'done') return false;
+  var ss = statesOf(td.dataset.k);
+  /* 복합 매물은 고른 상태가 하나라도 들어 있으면 함께 보인다 */
+  if ((f.st === 'sale' || f.st === 'jeonse' || f.st === 'wolse' || f.st === 'done')
+      && ss.indexOf(f.st) < 0) return false;
   if (f.st === 'urgent' && !isUrgent(td.dataset.k)) return false;
   if (f.st === 'memo' && !hasInfo(td.dataset.k)) return false;
   if (f.q) {
     var k = td.dataset.k;
     var hay = norm(dongLabel(td.dataset.d) + td.dataset.ho + '호' + td.dataset.f + '층'
-                 + hoNum(td.dataset.f, td.dataset.ho) + ' ' + k + ' ' + ST_NAME[st] + ' '
-                 + memoOf(k) + ' ' + fieldText(k) + (isUrgent(k) ? ' 급매' : ''));
+                 + hoNum(td.dataset.f, td.dataset.ho) + ' ' + k + ' ' + statesLabel(ss) + ' '
+                 + memoOf(k) + ' ' + fieldText(k) + (isUrgent(k) ? ' 급매' : '') + (isOtherProp(k) ? ' 타부동산' : ''));
     if (hay.indexOf(f.q) < 0) return false;
   }
   return true;
@@ -859,8 +954,9 @@ function updateCounts() {
   /* 지금 보고 있는 배치표(홈이면 전체 단지)의 호실만 센다.
      다른 단지의 매물 수가 섮여 '내 매물 63호실'처럼 보이던 문제를 막는다. */
   eachUnitKey(function (k) {
-    var st = stateOf(k);
-    if (st !== 'none') c[st]++;
+    var ss = statesOf(k);
+    /* 복합 매물은 들어 있는 상태마다 함께 센다 (매매+전세 → 매매1·전세1) */
+    ss.forEach(function (s) { if (c[s] != null) c[s]++; });
     if (hasInfo(k)) c.memo++;
   });
   $('c-sale').textContent = c.sale.toLocaleString('ko-KR');
@@ -870,7 +966,7 @@ function updateCounts() {
   $('c-memo').textContent = c.memo.toLocaleString('ko-KR');
   var mine = 0;
   Object.keys(S.notes).forEach(function (k) {
-    if (!(hasInfoNote(S.notes[k]) || stateOf(k) !== 'none')) return;
+    if (!(hasInfoNote(S.notes[k]) || statesOf(k).length)) return;
     if (HOME_ON || noteCxId(k) === CX.id) mine++;
   });
   $('c-seed').textContent = mine.toLocaleString('ko-KR');
@@ -887,13 +983,18 @@ var tipEl = $('tip'), tipOn = false;
 function showTip(td, x, y) {
   var d = td.dataset.d, h = td.dataset.ho, f = td.dataset.f, t = td.dataset.t, key = td.dataset.k;
   var u = IDX.get(key); if (!u) return;
-  var st = stateOf(key), sup = unitSup(u), jeon = unitJeon(u);
+  var ss = statesOf(key), st = primaryOf(ss), sup = unitSup(u), jeon = unitJeon(u);
   var tname = typeFull(t);
   var memo = memoOf(key).replace(/\n+/g, ' · ').replace(/\s+/g, ' ').trim();
-  var ft = fieldText(key), urg = isUrgent(key);
+  var ft = fieldText(key), urg = isUrgent(key), op = isOtherProp(key);
+  /* 복합 상태면 색 두세 개를 나란히 견다 */
+  var sw = (ss.length ? ss : ['none']).map(function (s) {
+    return '<em style="background:' + ST_COLOR[s] + ';border:1px solid ' + ST_BORDER[s] + '"></em>';
+  }).join('');
   tipEl.innerHTML = '<b>' + dongLabel(d) + ' ' + hoNum(f, h) + '호</b>' + (urg ? ' <em class="uu">(급)</em>' : '')
+    + (op ? ' <em class="uu">✓타부동산</em>' : '')
     + ' · ' + tname + (CX.price ? ' · <i>' + won(u.p) + '</i>' : '')
-    + '<span class="stx"><em style="background:' + ST_COLOR[st] + ';border:1px solid ' + ST_BORDER[st] + '"></em>' + ST_NAME[st] + '</span>'
+    + '<span class="stx">' + sw + (ss.length > 1 ? '<em class="stx-k">' : '') + statesLabel(ss) + (ss.length > 1 ? '</em>' : '') + '</span>'
     + (ft ? '<em class="fl">' + esc(ft) + '</em>' : '')
     + '<em class="ar">공급 <b>' + sup.toFixed(2) + '㎡</b> (' + py(sup) + '평) · 전용 <b>' + jeon.toFixed(2) + '㎡</b> (' + py(jeon) + '평)</em>'
     + (memo ? '<s>' + esc(memo.slice(0, 110)) + '</s>' : '')
@@ -927,13 +1028,19 @@ var mc = $('mc'), ov = $('ov');
 var mcHo = $('mc-ho'), mcType = $('mc-type'), mcPrice = $('mc-price'), mcGy = $('mc-gy'),
     mcJn = $('mc-jn'), mcGye = $('mc-gye'), mcMemo = $('mc-memo'), mcSaved = $('mc-saved'),
     mcStat = $('mc-stat'), mcFields = $('mc-fields'), mcUrg = $('mc-urg');
-var mcIn = { price: $('mc-price-in'), owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant'), tphone: $('mc-tphone'), end: $('mc-end') };
+var mcOp = $('mc-op');
+var mcIn = { owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant'), tphone: $('mc-tphone'), end: $('mc-end') };
+/* 금액 칸 — 상태별로 따로 적는다. mc-price-in 은 매매가이자, 상태가 없을 때의 '금액' 칸이다 */
+var mcP = { sale: $('mc-price-in'), jeonse: $('mc-price-jeonse'), wolse: $('mc-price-wolse') };
+var mcPRows = { sale: $('mc-row-sale'), jeonse: $('mc-row-jeonse'), wolse: $('mc-row-wolse') };
+function priceInputs() { return [mcP.sale, mcP.jeonse, mcP.wolse]; }
 
 var cur = null, curTd = null, selTd = null, curBase = '', saveT = null, justOpened = false, joT = null, posT = null;
 
 function curSig() {
   var o = { memo: mcMemo.value };
   FIELDS.forEach(function (f) { o[f] = mcIn[f].value; });
+  priceInputs().forEach(function (el, i) { o['p' + i] = el.value; });
   return JSON.stringify(o);
 }
 function readFields() {
@@ -941,16 +1048,42 @@ function readFields() {
   FIELDS.forEach(function (f) { var v = mcIn[f].value.trim(); if (v) o[f] = v; });
   return o;
 }
+function isGenericState(ss) {
+  var arr = cleanStates(ss);
+  return arr.length === 0 || (arr.length === 1 && arr[0] === 'done');
+}
+/* 지금 고른 상태의 금액 칸만 읽는다 — 숨은 상태의 금액은 적지 않은 것으로 친다 */
+function readPrices(ss) {
+  var o = {}, arr = cleanStates(ss);
+  if (arr.indexOf('sale') >= 0) o.sale = mcP.sale.value.trim();
+  else if (isGenericState(arr)) o.etc = mcP.sale.value.trim();
+  if (arr.indexOf('jeonse') >= 0) o.jeonse = mcP.jeonse.value.trim();
+  if (arr.indexOf('wolse') >= 0) o.wolse = mcP.wolse.value.trim();
+  return o;
+}
+/* 상태별 금액을 정리한다. 지금 고른 상태에서 빈 칸이면 그 금액만 지우고,
+   잠시 해제한 상태의 금액은 지우지 않는다(다시 고르면 그대로 살아난다). */
+function applyPrices(n, ss) {
+  var ps = pricesOf(n), kept = {}, got = readPrices(ss);
+  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { var v = str(ps[p]); if (v) kept[p] = v; });
+  Object.keys(got).forEach(function (p) { if (got[p]) kept[p] = got[p]; else delete kept[p]; });
+  n.ps = kept;
+  n.price = primaryPrice(n);
+}
 function fillEditor(k) {
-  var n = S.notes[k] || {};
+  var n = S.notes[k] || {}, ss = statesFromNote(n), ps = pricesOf(n), gen = isGenericState(ss);
   FIELDS.forEach(function (f) {
     var v = str(n[f]);
     mcIn[f].value = (f === 'phone' || f === 'tphone') ? fmtPhone(v) : v;
   });
+  mcP.sale.value = ss.indexOf('sale') >= 0 ? str(ps.sale) : (gen ? str(ps.etc) : '');
+  mcP.jeonse.value = str(ps.jeonse);
+  mcP.wolse.value = str(ps.wolse);
   mcMemo.value = memoOf(k);
   curBase = curSig();
-  setStatusUI(stateOf(k));
+  setStatusUI(ss);
   setUrgUI(isUrgent(k));
+  setOpUI(isOtherProp(k));
 }
 function flashSaved(text) {
   mcSaved.textContent = text || '저장됨';
@@ -959,28 +1092,45 @@ function flashSaved(text) {
   if (text !== '저장 실패') saveT = setTimeout(function () { mcSaved.classList.remove('on'); }, 1400);
 }
 function setUrgUI(on) { mcUrg.dataset.on = on ? '1' : '0'; }
-function setStatusUI(st) {
-  document.querySelectorAll('#mc-stat button').forEach(function (b) { b.classList.toggle('on', b.dataset.s === st); });
-  syncFieldUI(st);
+function setOpUI(on) { mcOp.dataset.on = on ? '1' : '0'; }
+/* 매매·전세·월세는 여러 개를 함께 켤 수 있고, 기본·보류·완료는 단독이다 */
+function setStatusUI(ss) {
+  var arr = cleanStates(ss);
+  document.querySelectorAll('#mc-stat button').forEach(function (b) {
+    var s = b.dataset.s;
+    b.classList.toggle('on', s === 'none' ? arr.length === 0 : arr.indexOf(s) >= 0);
+  });
+  syncFieldUI(arr);
 }
 /* 다른 회원의 배치표를 볼 때 메모장을 읽기 전용으로 바꾸고, 돌아오면 되돌린다 */
 function applyROView() {
   var ro = !!RO;
   mc.classList.toggle('ro', ro);
-  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).forEach(function (el) {
+  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).concat(priceInputs()).forEach(function (el) {
     el.readOnly = ro;
     if (ro) el.setAttribute('tabindex', '-1'); else el.removeAttribute('tabindex');
   });
   document.querySelectorAll('#mc-stat button').forEach(function (b) { b.disabled = ro; });
-  mcUrg.disabled = ro;
+  mcUrg.disabled = ro; mcOp.disabled = ro;
   $('mc-del').hidden = ro;
   if (ro) { mcSaved.textContent = '읽기 전용 · 보기만'; mcSaved.classList.add('on'); }
   else { mcSaved.textContent = '저장됨'; mcSaved.classList.remove('on'); }
 }
-function syncFieldUI(st) {
-  var rental = (st === 'jeonse' || st === 'wolse');
+function syncFieldUI(ss) {
+  var arr = cleanStates(ss), gen = isGenericState(arr), rental = (arr.indexOf('jeonse') >= 0 || arr.indexOf('wolse') >= 0);
+  var show = {
+    sale: arr.indexOf('sale') >= 0 || gen,
+    jeonse: arr.indexOf('jeonse') >= 0,
+    wolse: arr.indexOf('wolse') >= 0
+  };
+  var shown = (show.sale ? 1 : 0) + (show.jeonse ? 1 : 0) + (show.wolse ? 1 : 0);
+  Object.keys(mcPRows).forEach(function (p) {
+    mcPRows[p].hidden = !show[p];
+    /* 한 칸뿐이면 넓게, 두세 칸이면 한 줄에 나란히 */
+    mcPRows[p].classList.toggle('wide', shown <= 1);
+  });
   mcFields.classList.toggle('rental', rental);
-  $('mc-lb-price').textContent = st === 'sale' ? '매매가 · P' : st === 'jeonse' ? '보증금' : st === 'wolse' ? '보증금 · 월세' : '금액';
+  $('mc-lb-price').textContent = show.sale ? (gen ? '금액' : '매매가 · P') : '금액';
   $('mc-lb-owner').textContent = rental ? '임대인' : '소유주';
   $('mc-lb-phone').textContent = rental ? '임대인 연락처' : '연락처';
   if (cur && !isNarrow()) requestAnimationFrame(placeCard);
@@ -1069,10 +1219,12 @@ function writeNote(force) {
   var sig = curSig();
   if (!force && sig === curBase) return;
   var txt = mcMemo.value, fld = readFields();
-  var n = S.notes[cur] || { s: 'none' };
-  n.memo = txt; n.price = fld.price || ''; n.owner = fld.owner || '';
-  n.phone = fld.phone || ''; n.tenant = fld.tenant || ''; n.tphone = fld.tphone || ''; n.end = fld.end || '';
-  if (isEmpty(n) && stateOf(cur) === 'none' && !n.urgent) {
+  var n = S.notes[cur] || { ss: [] }, ss = statesFromNote(n);
+  n.memo = txt;
+  FIELDS.forEach(function (f) { n[f] = fld[f] || ''; });
+  n.ss = ss; n.s = primaryOf(ss);
+  applyPrices(n, ss);
+  if (isEmpty(n) && !n.urgent && !n.op) {
     delete S.notes[cur];
   } else {
     S.notes[cur] = n;
@@ -1083,26 +1235,43 @@ function writeNote(force) {
 
 mcStat.addEventListener('click', function (e) {
   var b = e.target.closest('button'); if (!b || !cur || RO) return;
-  var n = S.notes[cur] || { s: 'none' };
-  n.s = cleanState(b.dataset.s);
-  n.memo = mcMemo.value;
+  var n = S.notes[cur] || { ss: [] }, arr = statesFromNote(n), s = b.dataset.s;
+  if (s === 'none') arr = [];
+  else if (s === 'done') arr = (arr.length === 1 && arr[0] === 'done') ? [] : ['done'];
+  else {
+    /* 매매·전세·월세는 누를 때마다 켜고 끈다 */
+    arr = arr.filter(function (x) { return x !== 'done'; });
+    var i = arr.indexOf(s);
+    if (i >= 0) arr.splice(i, 1); else arr.push(s);
+    arr = cleanStates(arr);
+  }
+  n.ss = arr; n.s = primaryOf(arr); n.memo = mcMemo.value;
   var fld = readFields();
   FIELDS.forEach(function (f) { n[f] = fld[f] || ''; });
-  S.notes[cur] = n;
-  if (isEmpty(n) && n.s === 'none') delete S.notes[cur];
+  applyPrices(n, arr);
+  if (isEmpty(n) && !n.urgent && !n.op) delete S.notes[cur]; else S.notes[cur] = n;
   curBase = curSig();
-  paintCell(cur); setStatusUI(stateOf(cur)); updateCounts(); markDirty(cur);
-  flashSaved('색상 저장');
+  paintCell(cur); setStatusUI(arr); updateCounts(); markDirty(cur);
+  flashSaved(arr.length > 1 ? '복합 상태 저장' : '색상 저장');
 });
 mcUrg.onclick = function () {
   if (!cur || RO) return;
-  var n = S.notes[cur] || { s: 'none' };
+  var n = S.notes[cur] || { ss: [] };
   var on = isUrgent(cur);
   n.urgent = on ? 0 : 1;
   S.notes[cur] = n;
   paintCell(cur); setUrgUI(isUrgent(cur)); updateCounts(); markDirty(cur);
   flashSaved(on ? '급매 해제' : '급매 표시');
-  if (on && URG_RE.test(str(n.memo) + ' ' + str(n.price))) toast('메모·금액에 적힌 급매 문구를 지우면 (급)이 사라집니다.');
+  if (on && URG_RE.test(str(n.memo) + ' ' + primaryPrice(n))) toast('메모·금액에 적힌 급매 문구를 지우면 (급)이 사라집니다.');
+};
+/* 타부동산 — 급매와 따로·동시에 켤 수 있다 */
+mcOp.onclick = function () {
+  if (!cur || RO) return;
+  var n = S.notes[cur] || { ss: [] };
+  n.op = n.op ? 0 : 1;
+  S.notes[cur] = n;
+  paintCell(cur); setOpUI(isOtherProp(cur)); updateCounts(); markDirty(cur);
+  flashSaved(n.op ? '타부동산 ✓ 표시' : '타부동산 해제');
 };
 function onEditorInput() {
   clearTimeout(saveT);
@@ -1114,6 +1283,10 @@ mcMemo.addEventListener('input', onEditorInput);
 FIELDS.forEach(function (f) {
   mcIn[f].addEventListener('input', onEditorInput);
   mcIn[f].addEventListener('blur', function () { writeNote(false); });
+});
+priceInputs().forEach(function (el) {
+  el.addEventListener('input', onEditorInput);
+  el.addEventListener('blur', function () { writeNote(false); });
 });
 /* 연락처는 숫자만 넣어도 보기 좋게 하이픈을 넣어 준다 (저장 값은 이 모양 그대로) */
 function phoneDigits(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''); }
@@ -1162,8 +1335,9 @@ $('mc-del').onclick = function () {
   if (!confirm('이 호실의 메모·금액·연락처·색상을 모두 지울까요?')) return;
   delete S.notes[cur];
   mcMemo.value = ''; FIELDS.forEach(function (f) { mcIn[f].value = ''; });
+  priceInputs().forEach(function (el) { el.value = ''; });
   curBase = curSig();
-  paintCell(cur); setStatusUI('none'); setUrgUI(false); updateCounts(); markDirty(cur);
+  paintCell(cur); setStatusUI('none'); setUrgUI(false); setOpUI(false); updateCounts(); markDirty(cur);
   flashSaved('삭제됨');
 };
 /* 메모장은 바깥을 눌러도 닫히지 않는다 (× 버튼·Esc 전용).
@@ -1302,7 +1476,7 @@ function stamp() {
 }
 function exportMap() {
   var out = {};
-  Object.keys(S.notes).forEach(function (k) { if (hasInfo(k) || stateOf(k) !== 'none') out[k] = S.notes[k]; });
+  Object.keys(S.notes).forEach(function (k) { if (hasInfo(k) || statesOf(k).length) out[k] = S.notes[k]; });
   return out;
 }
 var $exportBtn = $('btn-export');
@@ -1328,9 +1502,18 @@ if ($exportBtn) $exportBtn.onclick = function () {
 
 function normNote(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  var ss = cleanStates(raw.ss != null ? raw.ss : (raw.s === 'memo' ? '' : raw.s));
+  var ps = {};
+  if (raw.ps && typeof raw.ps === 'object') {
+    ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { if (str(raw.ps[p])) ps[p] = str(raw.ps[p]); });
+  }
+  if (!Object.keys(ps).length && str(raw.price)) ps[priceKeyOf(ss.length ? ss[0] : 'none')] = str(raw.price);
   var n = {
-    s: cleanState(raw.s === 'memo' ? 'none' : raw.s),
-    price: str(raw.price),
+    s: ss.length ? ss[0] : 'none',
+    ss: ss,
+    ps: ps,
+    price: primaryPrice({ ss: ss, ps: ps }),
+    op: raw.op || raw.other_prop ? 1 : 0,
     owner: str(raw.owner),
     tenant: str(raw.tenant),
     phone: str(raw.phone),
@@ -1472,8 +1655,8 @@ function expHidden() { try { return (+localStorage.getItem(expKey()) || 0) > Dat
 function leaseSoon() {
   var out = [];
   Object.keys(S.notes).forEach(function (k) {
-    var n = S.notes[k] || {}, st = cleanState(n.s);
-    if (st !== 'jeonse' && st !== 'wolse') return;
+    var n = S.notes[k] || {}, st = leaseState(n);
+    if (!st) return;
     var d = dayLeft(n.end);
     if (d === null || d < 0 || d > 90) return;
     var cx = cxByKey(k), u = (cx ? CXIDX[cx.id].get(k) : IDX.get(k));
@@ -1527,12 +1710,16 @@ if (expEl) {
 
 /* 데모 전용: 연습용 예시 */
 var SAMPLE = [
-  ['106-4-52', { s: 'sale', price: '2억 3,000', owner: '홍길동', phone: '010-2345-6789', memo: '매수 문의 2팀\n주말 방문 가능' }],
-  ['106-3-41', { s: 'jeonse', price: '1억 8,000 / 0', owner: '김정희', tenant: '이서준', phone: '010-8765-4321', memo: '11월 말 입주' }],
-  ['105-5-33', { s: 'wolse', price: '5,000 / 120', owner: '박상철', tenant: '최유진', phone: '010-3333-2222', memo: '반려동물 가능' }],
-  ['103-5-63', { s: 'sale', price: '1억', owner: '골드', phone: '010-1111-2222', memo: '급매 / 손님 있을 때 연락', urgent: 1 }],
-  ['102-4-31', { s: 'done', price: '9,000', owner: '민충기', phone: '010-5555-6666', memo: '공동 매매 완료' }],
-  ['101-4-40', { s: 'sale', price: '1억 7,610', owner: '', phone: '', memo: '' }]
+  ['106-4-52', { ss: ['sale'], ps: { sale: '2억 3,000' }, owner: '홍길동', phone: '010-2345-6789', memo: '매수 문의 2팀\n주말 방문 가능' }],
+  ['106-3-41', { ss: ['jeonse'], ps: { jeonse: '1억 8,000 / 0' }, owner: '김정희', tenant: '이서준', phone: '010-8765-4321', memo: '11월 말 입주' }],
+  ['105-5-33', { ss: ['wolse'], ps: { wolse: '5,000 / 120' }, owner: '박상철', tenant: '최유진', phone: '010-3333-2222', memo: '반려동물 가능' }],
+  ['103-5-63', { ss: ['sale'], ps: { sale: '1억' }, owner: '골드', phone: '010-1111-2222', memo: '급매 / 손님 있을 때 연락', urgent: 1 }],
+  ['102-4-31', { ss: ['done'], ps: { etc: '9,000' }, owner: '민충기', phone: '010-5555-6666', memo: '공동 매매 완료' }],
+  ['101-4-40', { ss: ['sale'], ps: { sale: '1억 7,610' } }],
+  /* 복합 상태(매매+전세 / 매매+전세+월세)와 타부동산 연습용 */
+  ['104-2-45', { ss: ['sale', 'jeonse'], ps: { sale: '2억 9,000', jeonse: '1억 9,500' }, owner: '이정숙', phone: '010-3333-1111', memo: '매매·전세 동시 진행' }],
+  ['105-1-31', { ss: ['sale', 'jeonse', 'wolse'], ps: { sale: '3억 4,000', jeonse: '2억 2,000 / 0', wolse: '1억 / 180' }, owner: '최영수', phone: '010-4444-2222', memo: '매매·전세·월세 모두 열어 둠' }],
+  ['102-3-51', { ss: ['sale'], ps: { sale: '1억 5,000' }, owner: '타사', phone: '010-7777-8888', memo: '타부동산 매물', op: 1, urgent: 1 }]
 ];
 $('btn-sample').onclick = function () {
   if (RO) return;
@@ -2123,8 +2310,8 @@ function renderHome() {
   /* ① 만기 도래 (전체 단지) */
   var ex = [];
   noteList().forEach(function (it) {
-    var st = cleanState(it.n.s);
-    if (st !== 'jeonse' && st !== 'wolse') return;
+    var st = leaseState(it.n);
+    if (!st) return;
     var left = dayLeft(it.n.end);
     if (left === null || left < 0 || left > 90) return;
     var cx = cxByKey(it.k); if (!cx) return;
@@ -2148,10 +2335,10 @@ function renderHome() {
     var c = { sale: 0, jeonse: 0, wolse: 0, done: 0, memo: 0, exp: 0 };
     Object.keys(S.notes).forEach(function (k) {
       var m = CXIDX[cx.id]; if (!m || !m.has(k)) return;
-      var n = S.notes[k] || {}, st = cleanState(n.s);
-      if (c[st] != null) c[st]++;
+      var n = S.notes[k] || {}, ss = statesFromNote(n);
+      ss.forEach(function (s) { if (c[s] != null) c[s]++; });
       if (hasInfoNote(n)) c.memo++;
-      if ((st === 'jeonse' || st === 'wolse')) {
+      if (leaseState(n)) {
         var left = dayLeft(n.end);
         if (left !== null && left >= 0 && left <= 90) c.exp++;
       }
@@ -2503,7 +2690,7 @@ document.addEventListener('visibilitychange', function () {
    role = 'admin' 인 계정에만 버튼이 보이고, 실제 허용은 서버(RLS)가 판단합니다.
    ============================================================ */
 var ACT_KO = { insert: '등록', update: '수정', delete: '삭제' };
-var F_LBL = { status: '상태', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', tenant_phone: '임차인 연락처', lease_end_date: '만기일', urgent: '급매', memo: '메모' };
+var F_LBL = { status: '상태', statuses: '복합 상태', other_prop: '타부동산', prices: '상태별 금액', price: '금액', owner_name: '소유주', tenant_name: '임차인', phone: '연락처', tenant_phone: '임차인 연락처', lease_end_date: '만기일', urgent: '급매', memo: '메모' };
 var admEl = $('adm'), ov4 = $('ov4');
 var adm = { on: false, tab: 'members', members: [], people: {}, logs: [], userLogs: [], cursor: null,
             user: '', action: '', q: '', openUser: null, busy: false, logsLoaded: false };
@@ -2554,11 +2741,14 @@ function cut(s, n) {
 function admVal(f, v) {
   if (f === 'status') return ST_NAME[cleanState(v)] || '—';
   if (f === 'urgent') return v ? '표시' : '표시 안 함';
+  if (f === 'other_prop') return v ? '타부동산' : '없음';
+  if (f === 'statuses') return v ? statesLabel(v) : '없음';
+  if (f === 'prices') return (v && typeof v === 'object') ? (priceText(Object.keys(v), v) || '없음') : '없음';
   if (v == null || String(v).trim() === '') return '없음';
   return cut(v, 40);
 }
 function admFields(d, list) {
-  return (list || ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'memo'])
+  return (list || ['status', 'statuses', 'prices', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'other_prop', 'memo'])
     .filter(function (f) { return admVal(f, d[f]) !== '없음'; });
 }
 function admPlain(d) {
@@ -2573,7 +2763,7 @@ function admSummary(g) {
     return '<em>삭제</em> ' + (admFields(b).map(function (f) { return esc(F_LBL[f] + ' ' + admVal(f, b[f])); }).join(' · ') || '빈 호실');
   }
   var parts = [];
-  ['status', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'urgent', 'memo'].forEach(function (f) {
+  ['status', 'statuses', 'prices', 'price', 'owner_name', 'tenant_name', 'phone', 'tenant_phone', 'lease_end_date', 'urgent', 'other_prop', 'memo'].forEach(function (f) {
     var x = b[f] == null ? '' : String(b[f]), y = a[f] == null ? '' : String(a[f]);
     if (x !== y) parts.push(F_LBL[f] + ' ' + esc(admVal(f, b[f])) + ' <em>→</em> ' + esc(admVal(f, a[f])));
   });
@@ -2705,10 +2895,12 @@ async function admOpenOffice(uid) {
     return;
   }
   var rows = (res.data || []).slice().sort(function (a, b) { return admUnitCmp(a.unit_key, b.unit_key); });
-  var cnt = { sale: 0, jeonse: 0, wolse: 0, done: 0, none: 0, urg: 0 };
+  var cnt = { sale: 0, jeonse: 0, wolse: 0, done: 0, none: 0, urg: 0, op: 0 };
   rows.forEach(function (r) {
-    cnt[cleanState(r.status)]++;
+    var ss = rowStates(r);
+    if (!ss.length) cnt.none++; else ss.forEach(function (s) { if (cnt[s] != null) cnt[s]++; });
     if (r.urgent) cnt.urg++;
+    if (r.other_prop) cnt.op++;
   });
   var canDel = (m.role !== 'admin') && !(S.user && S.user.id === uid);
   var head = '<div class="of-head">'
@@ -2727,14 +2919,16 @@ async function admOpenOffice(uid) {
     + '<span class="of-chip">월세 <b>' + cnt.wolse + '</b></span>'
     + '<span class="of-chip">보류·완료 <b>' + cnt.done + '</b></span>'
     + '<span class="of-chip">급매 <b>' + cnt.urg + '</b></span>'
+    + '<span class="of-chip">타부동산 <b>' + cnt.op + '</b></span>'
     + '<span class="of-chip">기타 <b>' + cnt.none + '</b></span></div>';
   var table = rows.length ? ('<div class="of-tw"><table class="of-table"><thead><tr>'
     + '<th>호실</th><th>상태</th><th>금액</th><th>소유주</th><th>임차인</th><th>연락처</th><th>임차인 연락처</th><th>만기일</th><th>메모</th><th>수정</th>'
     + '</tr></thead><tbody>' + rows.map(function (r) {
       return '<tr>'
-        + '<td class="num-c">' + esc(admUnit(r.unit_key)) + (r.urgent ? ' <span class="al-act delete" style="padding:0 5px">급</span>' : '') + '</td>'
-        + '<td>' + esc(ST_NAME[cleanState(r.status)] || '—') + '</td>'
-        + '<td>' + esc(str(r.price) || '—') + '</td>'
+        + '<td class="num-c">' + esc(admUnit(r.unit_key)) + (r.urgent ? ' <span class="al-act delete" style="padding:0 5px">급</span>' : '')
+        + (r.other_prop ? ' <span class="al-act" style="padding:0 5px;color:#0f766e;background:#dcfce7">✓</span>' : '') + '</td>'
+        + '<td>' + esc(statesLabel(rowStates(r))) + '</td>'
+        + '<td>' + esc(priceText(rowStates(r), r.prices || {}) || str(r.price) || '—') + '</td>'
         + '<td>' + esc(str(r.owner_name) || '—') + '</td>'
         + '<td>' + esc(str(r.tenant_name) || '—') + '</td>'
         + '<td>' + esc(str(r.phone) || '—') + '</td>'
@@ -2964,6 +3158,9 @@ async function admRestore(id, btn) {
         user_id: g.user_id,
         unit_key: g.unit_key,
         status: cleanState(d.status),
+        statuses: d.statuses || null,
+        prices: (d.prices && typeof d.prices === 'object') ? d.prices : null,
+        other_prop: !!d.other_prop,
         price: str(d.price) || null,
         owner_name: str(d.owner_name) || null,
         tenant_name: str(d.tenant_name) || null,

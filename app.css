@@ -343,17 +343,13 @@ td.fx:empty{border:0; background:transparent}
 
 /* ============================================================
    동별 구분 — 동마다 다른 테두리 색  (2026-11-24)
-   동 하나(.dong)를 한 채의 건물로 보고 테두리를 동 색(--dc)으로 칠한다.
+   동 하나(.dong)를 한 채의 건물로 보고 '바깥 사각형'만 동 색으로 칠한다.
    · 카드 바깥 테두리 2.5px  · 동 제목 머리(밝은 바탕 + 동 색 글자)
-   · 동 이름 띠(tr.dongrow)  · 빈 하늘 칸에는 동 색의 아주 옅은 바탕
-   호실 칸은 오직 건물 바깥에 면한 변(.e-t/.e-r/.e-b/.e-l)만 2px 로 칠해,
-   빈 하늘 칸에는 테두리가 생기지 않고 건물 실루엣만 따라간다.
-   동 안쪽 호실 사이 격자선은 지금처럼 연한 회색으로 남는다.
+   · 동 이름 띠(tr.dongrow)
+   호실 칸 안쪽에는 동 색 선을 전혀 넣지 않는다 — 호실 사이는 연한 회색,
+   호실이 없는 빈 칸(td.fx:empty)은 테두리도 바탕도 없다.
+   (2026-11-24 사용자 요청: 건물 내부에 생기던 동색 줄무늬/네모 제거)
    ============================================================ */
-td.c.e-t{border-top:2px solid var(--dc,#dfe4ea)}
-td.c.e-r{border-right:2px solid var(--dc,#dfe4ea)}
-td.c.e-b{border-bottom:2px solid var(--dc,#dfe4ea)}
-td.c.e-l{border-left:2px solid var(--dc,#dfe4ea)}
 tr.sum th{height:calc(var(--rh) + .5px); background:#f7f9fa; border:1px solid var(--gl); text-align:center;
           font-size:var(--fsum); font-weight:700; color:#5f6f7e; letter-spacing:-.5px; line-height:1}
 tr.sum td{height:calc(var(--rh) + .5px); border:1px solid var(--gl); text-align:center; font-size:var(--fsum);
@@ -445,7 +441,14 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-fi.ten{display:none}
 .mc-fields.rental .mc-fi.ten{display:flex}
 .mc-cap{font-size:9px; font-weight:800; color:#94a3b8; margin:0 0 2px 1px; letter-spacing:-.2px}
-.mc-urgrow{display:flex; margin:-2px 0 6px}
+.mc-urgrow{display:flex; gap:4px; margin:-2px 0 6px; flex-wrap:wrap}
+.mc-op{border:1px solid #c9e7dc; background:#fff; color:#0f766e; border-radius:7px; padding:3px 9px; font-size:10.5px;
+       font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px}
+.mc-op i{font-style:normal; font-weight:900; font-size:12px; line-height:1}
+.mc-op:hover{background:#f0fbf6}
+.mc-op[data-on="1"]{background:#dcfce7; border-color:#86efac; color:#15803d}
+.mc-multi-hint{font-size:9px; line-height:1.35; letter-spacing:-.2px; color:#8b97a5; margin:-3px 0 6px}
+.mc-multi-hint b{color:#4b5563; font-weight:800}
 .mc-urg{border:1px solid #f3d0d0; background:#fff; color:#b91c1c; border-radius:7px; padding:3px 9px; font-size:10.5px;
         font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px}
 .mc-urg i{font-style:normal; font-weight:800}
@@ -605,6 +608,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   .mc-fi input{font-size:13px}
   .mc-cap{font-size:9.5px}
   .mc-urg{padding:5px 11px; font-size:11.5px; border-radius:8px}
+  .mc-op{padding:5px 11px; font-size:11.5px; border-radius:8px}
   .mc textarea{min-height:104px; font-size:13px; padding:8px 9px; border-radius:9px}
   .mc-del{padding:8px 11px; font-size:12px; border-radius:9px}
   .tip{display:none !important}
@@ -648,7 +652,7 @@ html{touch-action:manipulation}
 .ro-back{margin-left:auto; border:1px solid #c7d2fe; background:#fff; color:#3730a3; border-radius:7px;
   padding:3px 10px; font-size:11px; font-weight:800; cursor:pointer; white-space:nowrap}
 .ro-back:hover{background:#e0e7ff}
-.mc.ro .mc-stat button[disabled], .mc.ro .mc-urg[disabled]{opacity:.45; cursor:default}
+.mc.ro .mc-stat button[disabled], .mc.ro .mc-urg[disabled], .mc.ro .mc-op[disabled]{opacity:.45; cursor:default}
 .mc.ro textarea[readonly], .mc.ro .mc-fi input[readonly]{background:#f8fafc; color:var(--ink2)}
 .mc.ro .mc-del{display:none}
 
@@ -929,3 +933,18 @@ td.c.is-urgent .num{font-weight:800}
 @media (prefers-reduced-motion: reduce){
   td.c.is-urgent{animation:none; box-shadow:inset 0 0 0 2.5px #ef4444}
 }
+
+/* ============================================================
+   복합 상태(2·3색 대각선) · 타부동산 ✓  (2026-11-24)
+   대각선 위에서도 호실 번호가 읽히도록 흰 테두리 그림자를 두고,
+   ✓ 는 숨은 숫자·(급)과 겹치지 않게 칸 오른쪽 위 모서리에 둔다.
+   ============================================================ */
+td.c.st-multi .num{text-shadow:0 0 2px #fff, 0 0 2px #fff, 0 0 3px rgba(255,255,255,.85)}
+td.c .op{position:absolute; top:-2px; right:1px; font-style:normal; font-weight:900; line-height:1;
+         font-size:calc(var(--fnum) * .95); color:#0f766e; letter-spacing:0; pointer-events:none;
+         text-shadow:0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 3px #fff}
+td.c.is-other .num{font-weight:800}
+/* ✓ 가 붙은 칸은 (급) 글자를 접는다 — 빨간 깜빡임 테두리가 급매를 이미 말해 주고,
+   11px 높이의 칸에서 글자와 ✓가 겹치는 것을 막는다 (툴팁에는 둘 다 나온다) */
+td.c.is-other .urg{display:none}
+td.c.is-other.s-done .op{color:#065f46}

@@ -8,7 +8,7 @@
 <title>매물콕 · 공인중개사 전용 매물장</title>
 <link rel="icon" type="image/png" href="favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="app.css?v=18">
+<link rel="stylesheet" href="app.css?v=19">
 </head>
 <body>
 
@@ -336,17 +336,23 @@
   <div class="mc-gye" id="mc-gye">—</div>
   <div class="mc-stat" id="mc-stat">
     <button data-s="none"><span class="dot w"></span>기본</button>
-    <button data-s="sale" title="매매 (연노랑)"><span class="dot s"></span>매매</button>
-    <button data-s="jeonse" title="전세 (하늘색)"><span class="dot j"></span>전세</button>
-    <button data-s="wolse" title="월세 (연라벤더)"><span class="dot o"></span>월세</button>
-    <button data-s="done" title="보류·매매완료 (빨강)"><span class="dot r"></span>보류·완료</button>
+    <button data-s="sale" title="매매 (연노랑) — 전세·월세와 함께 고를 수 있습니다"><span class="dot s"></span>매매</button>
+    <button data-s="jeonse" title="전세 (하늘색) — 매매·월세와 함께 고를 수 있습니다"><span class="dot j"></span>전세</button>
+    <button data-s="wolse" title="월세 (연라벤더) — 매매·전세와 함께 고를 수 있습니다"><span class="dot o"></span>월세</button>
+    <button data-s="done" title="보류·매매완료 (빨강) — 단독 선택"><span class="dot r"></span>보류·완료</button>
   </div>
+  <div class="mc-multi-hint">매매·전세·월세는 <b>여러 개를 함께</b> 고를 수 있습니다 — 호실 칸이 대각선으로 나뉩니다.</div>
   <div class="mc-urgrow">
     <button class="mc-urg" id="mc-urg" data-on="0" title="급매 호실로 표시 — 호실 칸에 빨간 (급)이 붙습니다"><i>(급)</i> 급매 표시</button>
+    <button class="mc-op" id="mc-op" data-on="0" title="타부동산 호실로 표시 — 호실 칸 오른쪽 위에 ✓ 가 붙습니다 (급매와 함께 켤 수 있음)"><i>✓</i> 타부동산</button>
   </div>
   <div class="mc-fields" id="mc-fields">
-    <label class="mc-fi wide"><span id="mc-lb-price">금액</span>
+    <label class="mc-fi wide" id="mc-row-sale"><span id="mc-lb-price">금액</span>
       <input id="mc-price-in" type="text" placeholder="예: 2억 5,000" autocomplete="off"></label>
+    <label class="mc-fi wide" id="mc-row-jeonse" hidden><span>전세 보증금</span>
+      <input id="mc-price-jeonse" type="text" placeholder="예: 1억 8,000 / 0" autocomplete="off"></label>
+    <label class="mc-fi wide" id="mc-row-wolse" hidden><span>월세 보증금·월세</span>
+      <input id="mc-price-wolse" type="text" placeholder="예: 5,000 / 120" autocomplete="off"></label>
     <label class="mc-fi"><span id="mc-lb-owner">소유주</span>
       <input id="mc-owner" type="text" placeholder="예: 홍길동" autocomplete="off"></label>
     <label class="mc-fi"><span id="mc-lb-phone">연락처</span>
@@ -378,6 +384,8 @@
     <li><b>호실 열기</b> — PC는 두 번, 폰은 한 번 누르면 메모장이 뜹니다. 타입·면적(해운대아이파크·두산위브더제니스는 분양가 없이 면적만)을 보면서 <b>금액·소유주·연락처·메모</b>를 적습니다. 센텀르엘은 분양가와 <b>계약금(5%)</b>도 함께 보입니다.</li>
     <li><b>색상</b> — <span class="k" style="background:#fff"></span>기본 · <span class="k" style="background:#FEF08A;border-color:#d9b421"></span><b>매매</b> · <span class="k" style="background:#BAE6FD;border-color:#56b6e0"></span><b>전세</b> · <span class="k" style="background:#E9D5FF;border-color:#c084fc"></span><b>월세</b> · <span class="k" style="background:#FCA5A5;border-color:#e88"></span><b>보류·매매완료</b> — 고른 호실만 그 색으로 칠해집니다. 아직 아무것도 적지 않은 호실은 흰색으로 남고, <b>타입 색</b>은 각 동 맨 아래 타입 줄에만 깔립니다. 메모만 적어도 색은 바뀌지 않습니다.</li>
     <li><b>급매</b> — 메모장의 <b>(급) 급매 표시</b>를 켜면 호실 테두리가 빨갛게 깜빡이고 숫자 옆에 빨간 <b>(급)</b>이 붙습니다. 메모나 금액에 <b>급매</b>라고 적어도 됩니다.</li>
+    <li><b>복합 상태</b> — 매매·전세·월세는 <b>두세 개를 함께</b> 고를 수 있습니다(보류·완료는 단독). 그러면 호실 칸이 <b>대각선으로 나뉘어</b> 매매=연노랑 · 전세=하늘색 · 월세=연라벤더가 나란히 칠해지고, 고른 상태의 <b>금액 칸이 모두</b> 열립니다. 위쪽 매매/전세/월세 버튼으로 걸러도 그 상태가 들어 있는 복합 매물은 함께 보입니다.</li>
+    <li><b>타부동산 ✓</b> — 메모장의 <b>✓ 타부동산</b>을 켜면 호실 칸 오른쪽 위에 <b>✓</b>가 붙습니다. <b>급매와 함께</b> 켜도 빨간 테두리와 ✓가 서로 가리지 않고 같이 보입니다.</li>
     <li><b>상태 버튼</b> — 매매·전세·월세·보류·완료·급매·메모있음을 누르면 그 상태만 진하게 남습니다. <b>같은 버튼을 한 번 더</b> 누르면 <b>전체</b>로 돌아옵니다.</li>
     <li><b>자동 저장</b> — 입력하는 대로 계정에 저장되어 PC와 폰에 그대로 이어집니다.</li>
     <li><b>내 정보</b> — 상호명(사무소명)과 비밀번호를 바꾸고, 비밀번호를 잊었을 때 받을 이메일을 등록합니다.</li>
@@ -514,6 +522,6 @@
 <script src="board-data.js?v=1"></script>
 <script src="ipark-data.js?v=2"></script>
 <script src="zenith-data.js?v=1"></script>
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
