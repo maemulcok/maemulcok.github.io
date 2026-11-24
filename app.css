@@ -294,15 +294,15 @@ select{border:1px solid #dfe3e8; border-radius:7px; padding:4px 5px; font-size:1
 #board{display:flex; align-items:flex-start; gap:var(--gap);
        /* 큰 표 위에 뜨는 메모장·툴팁이 표 글자에 가려지지 않도록 별도 페인트 영역으로 둔다 */
        contain:paint; isolation:isolate}
-.dong{flex:1 1 0; min-width:0; background:var(--dc-tint,#fff); border:2.5px solid var(--dc,#e3e8ed);
+.dong{flex:1 1 0; min-width:0; background:var(--dc-tint,#fff); border:2.5px solid var(--dc,#334155);
       border-radius:6px; box-shadow:0 1px 2px rgba(15,23,42,.05); overflow:hidden}
 table.grid{border-collapse:collapse; table-layout:fixed; width:100%}
 table.grid col.fc{width:var(--colw)}
 table.grid th, table.grid td{padding:0}
-thead th.dh{height:var(--rhd); background:var(--dc-h,#eef3f5); border:1px solid var(--dc,#d3dde1);
-            border-bottom:2px solid var(--dc,#d3dde1); text-align:center;
-            font-size:var(--fh); font-weight:800; color:var(--dc,#2f5b63); letter-spacing:-.3px; white-space:nowrap}
-thead th.dh .ds{margin-left:4px; font-weight:700; font-size:9px; color:#7b9399}
+thead th.dh{height:var(--rhd); background:var(--dc-h,#F1F5F9); border:1px solid var(--dc,#334155);
+            border-bottom:2px solid var(--dc,#334155); text-align:center;
+            font-size:var(--fh); font-weight:800; color:var(--dc,#334155); letter-spacing:-.3px; white-space:nowrap}
+thead th.dh .ds{margin-left:4px; font-weight:700; font-size:9px; color:#64748B}
 tbody th.fc{height:var(--rh); background:#fafbfc; border:1px solid var(--gl); text-align:center; white-space:nowrap;
             font-size:var(--ffloor); font-weight:700; color:#5f6f7e; letter-spacing:-.5px; line-height:1}
 tbody th.fc.evac{background:#edf3fa; color:#1d4ed8}
@@ -342,19 +342,22 @@ td.fx.salefloor{background:#fbfcfd; color:#4b5b6b}
 td.fx:empty{border:0; background:transparent}
 
 /* ============================================================
-   동별 구분 — 동마다 다른 테두리 색  (2026-11-24)
+   동 구분 — 모든 동 공통 짙은 회색 테두리  (2026-11-24)
    동 하나(.dong)를 한 채의 건물로 보고 '바깥 사각형'만 동 색으로 칠한다.
    · 카드 바깥 테두리 2.5px  · 동 제목 머리(밝은 바탕 + 동 색 글자)
    · 동 이름 띠(tr.dongrow)
    호실 칸 안쪽에는 동 색 선을 전혀 넣지 않는다 — 호실 사이는 연한 회색,
    호실이 없는 빈 칸(td.fx:empty)은 테두리도 바탕도 없다.
    (2026-11-24 사용자 요청: 건물 내부에 생기던 동색 줄무늬/네모 제거)
+   2026-11-24 사용자 요청: 동마다 다른 색을 쓰지 않고 모든 동·모든 단지를
+   같은 짙은 회색(#334155)으로 통일. --dc 값은 app.js 의 DONG_COLOR 가 정하고,
+   아래 기본값도 같은 회색이라 새 단지·새 동이 늘어도 결이 바뀌지 않는다.
    ============================================================ */
 tr.sum th{height:calc(var(--rh) + .5px); background:#f7f9fa; border:1px solid var(--gl); text-align:center;
           font-size:var(--fsum); font-weight:700; color:#5f6f7e; letter-spacing:-.5px; line-height:1}
 tr.sum td{height:calc(var(--rh) + .5px); border:1px solid var(--gl); text-align:center; font-size:var(--fsum);
           font-weight:700; color:#334155; letter-spacing:-.5px; line-height:1}
-tr.dongrow td{background:var(--dc,#3d6f78); border-color:var(--dc,#35626a); color:#fff; font-size:calc(var(--fsum) + 1px);
+tr.dongrow td{background:var(--dc,#334155); border-color:var(--dc,#334155); color:#fff; font-size:calc(var(--fsum) + 1px);
               font-weight:800; letter-spacing:-.3px}
 tr.dongrow td .sub{font-weight:600; font-size:8.5px; opacity:.82; margin-left:4px}
 tr.typerow td{font-weight:800; padding:0 1px}
@@ -585,8 +588,8 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   /* 좁은 화면은 동이 세로로 쌓이므로 바닥 정렬용 빈 층칸은 접는다 */
   #board tr.fz{display:none}
   .dong{flex:none; width:100%; border-radius:9px; margin-bottom:7px; scroll-margin-top:calc(var(--barh) + 34px)}
-  thead th.dh{background:var(--dc,#3d6f78); color:#fff; border-color:var(--dc,#35626a); text-align:left; padding-left:8px; height:19px}
-  thead th.dh .ds{color:#cfe0e3; font-size:8.5px}
+  thead th.dh{background:var(--dc,#334155); color:#fff; border-color:var(--dc,#334155); text-align:left; padding-left:8px; height:19px}
+  thead th.dh .ds{color:#cbd5e1; font-size:8.5px}
   tbody th.fc{height:var(--rh); font-size:8.5px; color:#64748b}
   td{height:var(--rh)}
   td.fx{font-size:8px}
