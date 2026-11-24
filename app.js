@@ -32,7 +32,7 @@ var CX_LIST = [];
     CX_LIST.push({
       id: 'zenith', name: '해운대두산위브더제니스', sub: '101·102·103동 · 1,788세대',
       desc: '마린시티 두산위브 더 제니스', board: window.ZENITH_BOARD, cols: 12, bottom: 3, fillBlanks: true,
-      price: false, dongs: [201, 202, 203]
+      price: false, dongs: [201, 202, 203], skipLines: [4]
     });
   }
   if (!CX_LIST.length) CX_LIST.push({ id: 'empty', name: '단지', sub: '', board: { units: [], area: {}, meta: {} }, cols: 6, bottom: 5, dongs: [] });
@@ -42,6 +42,30 @@ var BOARD = CX.board;
 var DONGS = (CX.dongs || []).slice();
 var TOP = {}, BOTTOM = CX.bottom || 5, COLS = CX.cols || 6;
 var DONG_META = {};
+/* 화면에서 빼는 호수 열 — 제니스는 4호 세대가 아예 없어 3호와 5호를 붙여 보여준다 */
+var SKIP_LINES = [], NCOLS = COLS;
+
+/* ---------- 동별 테두리 색 ----------
+   동 하나를 한 채의 건물로 보고 테두리를 동마다 다른 색으로 둘러 구분한다.
+   c=테두리·동 이름 띠, h=동 제목 머리 바탕, t=빈 하늘 칸의 아주 옅은 바탕.
+   인접한 동끼리 색이 붙지 않도록 파랑 → 황토 → 청록 → 보라 → 올리브 → 하늘 순으로 섞었다. */
+var DONG_COLORS = [
+  { c: '#1D4ED8', h: 'rgba(29,78,216,.11)',  t: 'rgba(29,78,216,.045)' },
+  { c: '#B45309', h: 'rgba(180,83,9,.13)',   t: 'rgba(180,83,9,.05)' },
+  { c: '#0F766E', h: 'rgba(15,118,110,.13)', t: 'rgba(15,118,110,.05)' },
+  { c: '#7E22CE', h: 'rgba(126,34,206,.11)', t: 'rgba(126,34,206,.045)' },
+  { c: '#4D7C0F', h: 'rgba(77,124,15,.13)',  t: 'rgba(77,124,15,.05)' },
+  { c: '#0E7490', h: 'rgba(14,116,144,.13)', t: 'rgba(14,116,144,.05)' }
+];
+function dongColor(d) {
+  var i = DONGS.indexOf(+d);
+  return DONG_COLORS[(i < 0 ? 0 : i) % DONG_COLORS.length];
+}
+function dongLines(n) {
+  var a = [];
+  for (var h = 1; h <= n; h++) if (SKIP_LINES.indexOf(h) < 0) a.push(h);
+  return a;
+}
 
 /* ---------- 기본 상수 ---------- */
 var F1_LABEL = {
@@ -253,6 +277,8 @@ function setComplex(cx) {
   DONGS = (cx.dongs || []).slice();
   BOTTOM = cx.bottom || 5;
   COLS = cx.cols || 6;
+  SKIP_LINES = (cx.skipLines || []).slice();
+  NCOLS = dongLines(COLS).length;
   TYPE_COLOR = (cx.id === 'ipark') ? IPARK_COLOR : (cx.id === 'zenith' ? ZENITH_COLOR : CENTUM_TYPE_COLOR);
   DONG_META = dongMetaFor(cx);
   TOP = {};
@@ -541,31 +567,40 @@ setComplex(CX);
 function buildDong(d) {
   var meta = DONG_META[d] || { top: TOP[d] || 67, cols: COLS, special: {} };
   var cols = meta.cols || COLS;
+  var lines = dongLines(cols);        /* 그리는 호수 열 (없는 호수는 빼고 이어 붙임) */
+  var ncols = lines.length;
+  var dc = dongColor(d);
   var box = document.createElement('div');
   box.className = 'dong';
   box.dataset.d = d;
   box.id = 'd' + d;
+  box.style.setProperty('--dc', dc.c);
+  box.style.setProperty('--dc-h', dc.h);
+  box.style.setProperty('--dc-tint', dc.t);
 
-  var html = '<table class="grid"><colgroup><col class="fc">' + '<col>'.repeat(cols) + '</colgroup>';
-  html += '<thead><tr><th class="dh" colspan="' + (cols + 1) + '">' + dongLabel(d)
+  var html = '<table class="grid"><colgroup><col class="fc">' + '<col>'.repeat(ncols) + '</colgroup>';
+  html += '<thead><tr><th class="dh" colspan="' + (ncols + 1) + '">' + dongLabel(d)
         + '<span class="ds">' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '세대</span></th></tr></thead><tbody>';
 
   var maxTop = 0;
   DONGS.forEach(function (x) { maxTop = Math.max(maxTop, TOP[x]); });
+  var specialRows = [];   /* 피난안전구역 같은 설비층 — 호실 실루엔을 거기서 끊지 않는다 */
 
   UNIT_FLOORS.forEach(function (f) {
     if (f > meta.top) {
       if (!CX.fillBlanks) return;
-      html += '<tr class="fz"><th class="fc bz">' + f + '층</th><td class="blank" colspan="' + cols + '"></td></tr>';
+      html += '<tr class="fz"><th class="fc bz">' + f + '층</th><td class="blank" colspan="' + ncols + '"></td></tr>';
       return;
     }
     var sp = meta.special && meta.special[String(f)];
     if (sp && f !== BOTTOM) {
-      html += '<tr><th class="fc evac">' + f + '층</th><td class="evac" colspan="' + cols + '">' + esc(sp) + '</td></tr>';
+      specialRows.push(f);
+      html += '<tr><th class="fc evac">' + f + '층</th><td class="evac" colspan="' + ncols + '">' + esc(sp) + '</td></tr>';
       return;
     }
     var tr = '<tr><th class="fc">' + f + '층</th>';
-    for (var h = 1; h <= cols; h++) {
+    for (var li = 0; li < ncols; li++) {
+      var h = lines[li];
       var u = IDX.get(K(d, h, f));
       if (u) {
         var span = (u.t === '244') ? 2 : 1;
@@ -575,7 +610,7 @@ function buildDong(d) {
         tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, h, f) + '" data-d="' + d
             + '" data-ho="' + h + '" data-f="' + f + '" data-t="' + u.t + '"'
             + ' aria-label="' + dongLabel(d) + ' ' + ho + '호 ' + u.t + '타입"><span class="num">' + ho + '</span></td>';
-        if (span === 2) h++;
+        if (span === 2) li++;
       } else {
         tr += '<td class="fx"></td>';
       }
@@ -585,24 +620,25 @@ function buildDong(d) {
 
   /* 저층부 (단지별) */
   if (CX.id === 'ipark') {
-    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 및 주민공동시설</td></tr>';
-    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 및 주민공동시설</td></tr>';
+    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + ncols + '">판매시설 및 주민공동시설</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">판매시설 및 주민공동시설</td></tr>';
   } else if (CX.id === 'zenith') {
-    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + cols + '">판매시설 · 공용부</td></tr>';
-    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">' + (F1_LABEL[d] || '로비 · 판매시설') + '</td></tr>';
+    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + ncols + '">판매시설 · 공용부</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '로비 · 판매시설') + '</td></tr>';
   } else {
     html += '<tr><th class="fc">4층</th><td class="fx">필로티</td><td class="fx">필로티</td><td class="fx">필로티</td>'
           + '<td class="fx lobby" colspan="2">로비</td><td class="fx">필로티</td></tr>';
-    html += '<tr><th class="fc">3층</th><td class="fx under" colspan="' + cols + '">부대복리시설</td></tr>';
-    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + cols + '">판매시설</td></tr>';
-    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + cols + '">' + (F1_LABEL[d] || '판매시설') + '</td></tr>';
+    html += '<tr><th class="fc">3층</th><td class="fx under" colspan="' + ncols + '">부대복리시설</td></tr>';
+    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + ncols + '">판매시설</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '판매시설') + '</td></tr>';
   }
 
-  html += '<tr class="sum dongrow"><th>동</th><td colspan="' + cols + '">' + dongLabel(d)
+  html += '<tr class="sum dongrow"><th>동</th><td colspan="' + ncols + '">' + dongLabel(d)
         + '<span class="sub">(' + (DONG_CNT[d] || 0).toLocaleString('ko-KR') + '세대)</span></td></tr>';
 
   html += '<tr class="sum typerow"><th>타입</th>';
-  for (var j = 1; j <= cols; j++) {
+  for (var lj = 0; lj < ncols; lj++) {
+    var j = lines[lj];
     var info = lineTypeInfo(d + '-' + j);
     var badge = (j === 1 && CX.id === 'centum') ? '<i class="b244">244</i>' : '';
     if (!info) {
@@ -623,16 +659,38 @@ function buildDong(d) {
   }
   html += '</tr>';
   html += '<tr class="sum linerow"><th>라인</th>';
-  for (var k = 1; k <= cols; k++) html += '<td>' + k + '호</td>';
+  for (var l1 = 0; l1 < ncols; l1++) html += '<td>' + lines[l1] + '호</td>';
   html += '</tr>';
   html += '<tr class="sum cntrow"><th>세대수</th>';
-  for (var m = 1; m <= cols; m++) html += '<td>' + (LINE_CNT[d + '-' + m] || 0) + '</td>';
+  for (var l2 = 0; l2 < ncols; l2++) html += '<td>' + (LINE_CNT[d + '-' + lines[l2]] || 0) + '</td>';
   html += '</tr>';
 
   html += '</tbody></table>';
   box.innerHTML = html;
   box.querySelectorAll('td.c[data-k]').forEach(function (td) { cellMap.set(td.dataset.k, td); });
+  markSilhouette(box, specialRows);
   return box;
+}
+
+/* 실제 호실이 있는 칸의 바깥 변(하늘·바닥과 맞닿은 변)에만 동 색을 준다.
+   빈 하늘 칸(td.fx:empty)은 그대로 두므로 건물 실루엣을 따라서만 테두리가 그려지고,
+   동 안쪽 호실 사이의 격자선은 지금처럼 연한 회색으로 남는다. */
+function markSilhouette(box, specialRows) {
+  var cells = Array.prototype.slice.call(box.querySelectorAll('td.c[data-k]'));
+  var occ = Object.create(null);
+  var spel = Object.create(null);
+  (specialRows || []).forEach(function (f) { spel[f] = 1; });
+  cells.forEach(function (td) {
+    var h = +td.dataset.ho, f = +td.dataset.f, sp = td.colSpan || 1;
+    for (var i = 0; i < sp; i++) occ[(h + i) + '_' + f] = 1;
+  });
+  cells.forEach(function (td) {
+    var h = +td.dataset.ho, f = +td.dataset.f, sp = td.colSpan || 1;
+    if (!spel[f + 1] && !occ[h + '_' + (f + 1)]) td.classList.add('e-t');
+    if (!occ[(h + sp) + '_' + f]) td.classList.add('e-r');
+    if (!spel[f - 1] && !occ[h + '_' + (f - 1)]) td.classList.add('e-b');
+    if (!occ[(h - 1) + '_' + f]) td.classList.add('e-l');
+  });
 }
 
 var built = false;
@@ -1188,7 +1246,7 @@ function computeFit() {
   var contentH = boardEl.getBoundingClientRect().height;
   if (!contentH || contentH < 50) return 1;
   var s = availH / contentH;
-  var needW = (CX.id === 'zenith' ? (COLS * 21 + 30) : 138) * DONGS.length + 5 * Math.max(0, DONGS.length - 1), availW = window.innerWidth - 24;
+  var needW = (CX.id === 'zenith' ? (NCOLS * 21 + 30) : 138) * DONGS.length + 5 * Math.max(0, DONGS.length - 1), availW = window.innerWidth - 24;
   if (needW > availW) s = Math.min(s, availW / needW);
   s = Math.floor(s * 1000) / 1000;
   return Math.max(0.45, Math.min(1.14, s));
@@ -2163,24 +2221,35 @@ function meMsg(id, t, ok) {
   el.classList.toggle('ok', !!ok && !!t);
 }
 
+/* 이메일 필수 전환 전에 가입한 계정은 u_...@id.centumleel.local 내부 주소가 남아 있다.
+   사람이 읽고 쓸 수 있는 주소가 아니므로 내 정보 칸에는 그대로 띄우지 않는다. */
+function realMail(mail) {
+  var s = String(mail || '').trim();
+  return isIdEmail(s) ? '' : s;
+}
+
 function meOpen() {
   if (!S.user) return;
   meMsg('me-office-msg', ''); meMsg('me-pw-msg', ''); meMsg('me-mail-msg', '');
   ['me-pw-cur', 'me-pw-new', 'me-pw-new2'].forEach(function (id) { var i = $(id); if (i) i.value = ''; });
   var uname = (S.profile && S.profile.username) || '';
-  var mail = (S.user && S.user.email) || '';
+  var mail = realMail(S.user && S.user.email);
   $('me-id').textContent = uname || mail || '—';
   $('me-role').textContent = (S.profile && S.profile.role === 'admin') ? '관리자' : '회원';
   $('me-office').value = (S.profile && S.profile.agency_name) || '';
   $('me-mail').value = mail;
   meEl.classList.add('on'); ov7.classList.add('on');
+  /* 아직 확인을 마치지 않은 새 주소가 남아 있으면 그 사실을 먼저 알려 준다 */
+  var pend0 = realMail(S.user && S.user.new_email);
+  if (pend0) meMsg('me-mail-msg', '확인 대기 중인 주소가 있습니다: ' + maskEmail(pend0) + ' — 메일함의 확인 링크를 누르면 그 주소로 바뀝니다.', true);
   /* 프로필에 적힌 실제 이메일·아이디가 있으면 그쪽을 보여 준다 */
   if (LIVE && S.sb) {
     (async function () {
       try {
         var r = await S.sb.from('profiles').select('username,email').eq('id', S.user.id).maybeSingle();
         if (r && !r.error && r.data) {
-          if (r.data.email) $('me-mail').value = r.data.email;
+          var pm = realMail(r.data.email);
+          if (pm) $('me-mail').value = pm;
           if (!uname && r.data.username) $('me-id').textContent = r.data.username;
         }
       } catch (e) {}
@@ -2261,11 +2330,12 @@ if ($('me-pw-go')) $('me-pw-go').onclick = async function () {
   }
 };
 
-/* 등록 이메일 변경 */
+/* 등록 이메일 변경 — 바뀐 주소가 비밀번호 찾기·재설정을 받는 주소가 된다 */
 if ($('me-mail-go')) $('me-mail-go').onclick = async function () {
   var b = this;
   var v = String($('me-mail').value || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { meMsg('me-mail-msg', '이메일 형식을 확인해 주세요.'); $('me-mail').focus(); return; }
+  if (isIdEmail(v)) { meMsg('me-mail-msg', '내부 주소는 쓸 수 없습니다. 실제로 쓰는 이메일을 넣어 주세요.'); $('me-mail').focus(); return; }
   if (!LIVE) { meMsg('me-mail-msg', '데모 모드에서는 이메일을 바꿀 수 없습니다.'); return; }
   if (b.disabled) return;
   var t0 = b.textContent;
@@ -2273,16 +2343,36 @@ if ($('me-mail-go')) $('me-mail-go').onclick = async function () {
   try {
     var u = await S.sb.auth.updateUser({ email: v });
     if (u && u.error) throw u.error;
-    var pend = u && u.data && u.data.user && u.data.user.new_email;
-    if (pend) meMsg('me-mail-msg', '확인 메일을 보냈습니다. ' + pend + ' 과(와) 지금 주소에서 확인을 마치면 바뀝니다.', true);
-    else meMsg('me-mail-msg', '등록 이메일을 ' + v + ' 로 바꿨습니다.', true);
-    toast('등록 이메일을 바꿨습니다.');
+    var pend = realMail(u && u.data && u.data.user && u.data.user.new_email);
+    if (pend) {
+      /* 인증 서버가 새 주소 확인을 먼저 요구하는 경우 — 확인 전에는 계정 주소가 그대로다 */
+      meMsg('me-mail-msg', '확인 메일을 ' + maskEmail(pend) + ' 로 보냈습니다. 메일함의 확인 링크를 누르면 그 주소로 바뀌고, 비밀번호 재설정 메일도 그 주소로 갑니다.', true);
+      toast('확인 메일을 보냈습니다.');
+    } else {
+      /* 이메일 확인을 끈 프로젝트에서는 곧바로 바뀐다 */
+      S.user = S.user || {};
+      S.user.email = v;
+      $('me-mail').value = v;
+      meMsg('me-mail-msg', '등록 이메일을 ' + v + ' 로 바꿨습니다. 이제 비밀번호 찾기·재설정 메일이 이 주소로 갑니다.', true);
+      toast('등록 이메일을 바꿨습니다.');
+      await saveProfileEmail(v);
+    }
   } catch (e) {
     meMsg('me-mail-msg', '바꾸지 못했습니다: ' + ((e && e.message) || e));
   } finally {
     b.disabled = false; b.textContent = t0;
   }
 };
+
+/* profiles.email 도 같이 맞춘다 (관리자 콘솔·다른 화면이 함께 보는 값).
+   실패해도 로그인·재설정은 auth 쪽 주소를 쓰므로 흐름을 막지 않는다. */
+async function saveProfileEmail(mail) {
+  if (!LIVE || !S.sb || !S.user) return;
+  try {
+    var r = await S.sb.from('profiles').update({ email: mail }).eq('id', S.user.id);
+    if (r && r.error) console.warn('profiles.email', r.error);
+  } catch (e) { console.warn('profiles.email', e); }
+}
 
 /* ============================================================
    앱 시작
