@@ -8,7 +8,7 @@
 <title>매물콕 · 공인중개사 전용 매물장</title>
 <link rel="icon" type="image/png" href="favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="app.css?v=20">
+<link rel="stylesheet" href="app.css?v=21">
 </head>
 <body>
 
@@ -259,6 +259,7 @@
         <select id="sel-type"><option value="">타입 전체</option></select>
         <select id="sel-dong"><option value="">동 전체</option></select>
         <div class="spacer"></div>
+        <button class="btn" id="btn-list" aria-pressed="false" title="지금 검색·필터에 맞는 매물을 글자 목록으로 봅니다">📋 목록</button>
         <button class="btn" id="btn-reset">비우기</button>
         <button class="btn" id="btn-sample" hidden>예시 채우기</button>
       </div>
@@ -301,7 +302,7 @@
   <div class="page" id="page" hidden>
     <div class="topline" id="topline">
       <span class="ic">✎</span>
-      <span class="gd" id="guide-sub">호실을 <b>더블클릭</b>하면 메모장 · 색상 · 계약 조건</span>
+      <span class="gd" id="guide-sub">호실을 <b>클릭</b>하면 메모장 · 색상 · 계약 조건</span>
       <span class="sepv"></span>
       <span class="lg"><i class="sw" style="background:#fff"></i>미확인</span>
       <span class="lg"><i class="sw" style="background:#FEF08A;border-color:#d9b421"></i>매매</span>
@@ -312,6 +313,7 @@
       <span id="tlegend" class="tl"></span>
     </div>
 
+    <div class="lpanel" id="listpanel" hidden></div>
     <div class="tabs" id="tabs"></div>
     <div id="board"></div>
   </div>
@@ -355,8 +357,11 @@
       <input id="mc-price-wolse" type="text" placeholder="예: 5,000 / 120" autocomplete="off"></label>
     <label class="mc-fi"><span id="mc-lb-owner">소유주</span>
       <input id="mc-owner" type="text" placeholder="예: 홍길동" autocomplete="off"></label>
-    <label class="mc-fi"><span id="mc-lb-phone">연락처</span>
-      <input id="mc-phone" type="tel" placeholder="010-0000-0000" autocomplete="off"></label>
+    <div class="mc-fi mc-ph" id="mc-fi-phone"><span id="mc-lb-phone">연락처</span>
+      <input id="mc-phone" type="tel" placeholder="010-0000-0000" autocomplete="off">
+      <div class="mc-exts" id="mc-ext-phone"></div>
+      <button type="button" class="mc-addph" id="mc-add-phone" title="소유주·임대인 연락처를 한 명 더 적습니다">+ 연락처 추가</button>
+    </div>
     <label class="mc-fi ten"><span>임차인</span>
       <input id="mc-tenant" type="text" placeholder="예: 김철수" autocomplete="off"></label>
     <label class="mc-fi ten"><span>임차인 연락처</span>
@@ -365,10 +370,23 @@
       <input id="mc-end" type="date" autocomplete="off"></label>
   </div>
   <div class="mc-cap">기타 메모</div>
-  <textarea id="mc-memo" rows="6" placeholder="매물 정보·상담 내용·고객 반응 등을 적어두세요.&#10;입력하면 자동으로 저장됩니다."></textarea>
+  <textarea id="mc-memo" rows="6" placeholder="매물 정보·상담 내용·고객 반응을 적고 아래 저장을 눌러주세요.&#10;저장할 때마다 오늘 날짜가 앞에 붙어 날짜별로 쌓입니다."></textarea>
   <div class="mc-foot">
     <span class="saved" id="mc-saved">저장됨</span>
+    <button class="mc-save" id="mc-save">저장</button>
     <button class="mc-del" id="mc-del">메모 삭제</button>
+  </div>
+</div>
+
+<!-- 메모장 저장하지 않은 내용 확인 -->
+<div class="ov" id="ov8"></div>
+<div class="uns" id="uns" role="dialog" aria-modal="true" aria-labelledby="uns-h">
+  <div class="uns-h" id="uns-h">저장하지 않은 내용이 있습니다</div>
+  <p class="uns-p" id="uns-p">저장하고 넘어갈까요?</p>
+  <div class="uns-b">
+    <button type="button" class="uns-go" id="uns-save">저장하고 이동</button>
+    <button type="button" class="uns-sub" id="uns-drop">저장 안 함</button>
+    <button type="button" class="uns-sub" id="uns-cancel">취소</button>
   </div>
 </div>
 
@@ -381,14 +399,17 @@
   <ul>
     <li><b>단지 세 곳</b> — 위쪽 <b>단지 바꾸기</b>로 <b>센텀르엘</b>(101~106동 · 2,070세대) · <b>해운대아이파크</b>(1~3동 · 1,631세대) · <b>해운대두산위브더제니스</b>(101~103동 · 1,788세대)를 오갑니다. <b>홈</b>에서는 세 단지의 만기·내 매물을 한 번에 봅니다.</li>
     <li><b>내 매물만</b> — 로그인한 계정의 기록만 보이고 저장됩니다. 다른 사무소의 매물은 서버에서도 열리지 않습니다.</li>
-    <li><b>호실 열기</b> — PC는 두 번, 폰은 한 번 누르면 메모장이 뜹니다. 타입·면적(해운대아이파크·두산위브더제니스는 분양가 없이 면적만)을 보면서 <b>금액·소유주·연락처·메모</b>를 적습니다. 센텀르엘은 분양가와 <b>계약금(5%)</b>도 함께 보입니다.</li>
+    <li><b>호실 열기</b> — PC·휴대폰 모두 <b>maemulcok.github.io</b> 같은 주소로 접속하고, 호실을 <b>한 번 누르면</b> 메모장이 뜹니다. 타입·면적(해운대아이파크·두산위브더제니스는 분양가 없이 면적만)을 보면서 <b>금액·소유주·연락처·메모</b>를 적습니다. 센텀르엘은 분양가와 <b>계약금(5%)</b>도 함께 보입니다.</li>
     <li><b>색상</b> — <span class="k" style="background:#fff"></span>기본 · <span class="k" style="background:#FEF08A;border-color:#d9b421"></span><b>매매</b> · <span class="k" style="background:#BAE6FD;border-color:#56b6e0"></span><b>전세</b> · <span class="k" style="background:#E9D5FF;border-color:#c084fc"></span><b>월세</b> · <span class="k" style="background:#FCA5A5;border-color:#e88"></span><b>보류·매매완료</b> — 고른 호실만 그 색으로 칠해집니다. 아직 아무것도 적지 않은 호실은 흰색으로 남고, <b>타입 색</b>은 각 동 맨 아래 타입 줄에만 깔립니다. 메모만 적어도 색은 바뀌지 않습니다.</li>
     <li><b>급매</b> — 메모장의 <b>(급) 급매 표시</b>를 켜면 호실 테두리가 빨갛게 깜빡이고 숫자 옆에 빨간 <b>(급)</b>이 붙습니다. 메모나 금액에 <b>급매</b>라고 적어도 됩니다.</li>
     <li><b>복합 상태</b> — 매매·전세·월세는 <b>두세 개를 함께</b> 고를 수 있습니다(보류·완료는 단독). 그러면 호실 칸이 <b>대각선으로 나뉘어</b> 매매=연노랑 · 전세=하늘색 · 월세=연라벤더가 나란히 칠해지고, 고른 상태의 <b>금액 칸이 모두</b> 열립니다. 위쪽 매매/전세/월세 버튼으로 걸러도 그 상태가 들어 있는 복합 매물은 함께 보입니다.</li>
     <li><b>타부동산 ✓</b> — 메모장의 <b>✓ 타부동산</b>을 켜면 호실 칸 오른쪽 위에 <b>✓</b>가 붙습니다. <b>급매와 함께</b> 켜도 빨간 테두리와 ✓가 서로 가리지 않고 같이 보입니다.</li>
     <li><b>상태 버튼</b> — 매매·전세·월세·보류·완료·급매·메모있음을 누르면 그 상태만 진하게 남습니다. <b>같은 버튼을 한 번 더</b> 누르면 <b>전체</b>로 돌아옵니다.</li>
-    <li><b>자동 저장</b> — 입력하는 대로 계정에 저장되어 PC와 폰에 그대로 이어집니다.</li>
+    <li><b>목록</b> — 상단 <b>📋 목록</b>을 누르면 지금 검색·필터에 맞는 매물이 <b>글자 목록</b>(동·호수·상태·급매·타부동산·금액·소유주·연락처·메모)으로 나옵니다. 줄을 누르면 그 호실 메모장이 바로 열립니다.</li>
+    <li><b>연락처 여러 개</b> — 소유주(임대인) 연락처 아래 <b>+ 연락처 추가</b>를 누르면 두 명 이상을 적을 수 있습니다.</li>
+    <li><b>메모 저장</b> — 메모장에서 고친 내용은 <b>저장</b>을 눌러야 저장됩니다(상태·급매·타부동산은 누르는 즉시). 저장할 때마다 오늘 날짜 <b>[2026.11.25]</b>가 붙어 <b>날짜별로 쌓입니다</b>.</li>
     <li><b>내 정보</b> — 상호명(사무소명)과 비밀번호를 바꾸고, 비밀번호를 잊었을 때 받을 이메일을 등록합니다.</li>
+    <li><b>피클(AI) 연동</b> — <b>내 정보</b>의 <b>피클 연동 안내 복사</b>를 눌러 쓰고 계신 AI에게 붙여 넣으면, AI가 이 매물장을 조회하고 등록할 수 있습니다.</li>
     <li><b>단축키</b> — <b>F</b> 맞춤 · <b>0</b> 100% · <b>+ / −</b> 확대·축소 · <b>/</b> 검색 · <b>Esc</b> 닫기. 메모장과 안내창은 오른쪽 위 <b>×</b>로도 닫힙니다.</li>
   </ul>
   <div class="foot"><button class="btn primary" id="help-close">확인</button></div>
@@ -513,6 +534,15 @@
     <p class="me-msg" id="me-mail-msg"></p>
   </section>
 
+  <section class="me-sec me-pk">
+    <h4>🤖 피클(AI) 연동</h4>
+    <p class="me-desc">쓰고 계신 AI 비서(피클)에게 아래 안내를 한 번 붙여 넣으면, 말로 매물을 묻고 등록할 수 있습니다.<br>PC·휴대폰 모두 <b>maemulcok.github.io</b> 같은 주소로 접속합니다.</p>
+    <div class="me-line end">
+      <button type="button" class="btn primary" id="me-pickle-copy">피클 연동 안내 복사</button>
+    </div>
+    <p class="me-msg" id="me-pickle-msg"></p>
+  </section>
+
   <div class="me-foot"><button type="button" class="btn" id="me-close">닫기</button></div>
 </div>
 
@@ -522,6 +552,6 @@
 <script src="board-data.js?v=1"></script>
 <script src="ipark-data.js?v=2"></script>
 <script src="zenith-data.js?v=1"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

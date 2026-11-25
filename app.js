@@ -925,6 +925,7 @@ function applyFilters() {
     c.classList.toggle('on', !!f.ty && c.dataset.t === f.ty);
   });
   updateCounts();
+  if (LIST_ON) renderList();
 }
 /* 이 호실이 어느 단지 것인지 — 단지 인덱스가 아직 만들어지기 전에는
    지금 배치표(IDX)에 있으면 현재 단지로 본다 */
@@ -970,6 +971,84 @@ function updateCounts() {
 }
 
 /* ============================================================
+   목록 보기 — 지금 검색·필터에 맞는 매물을 글자로 (2026-11-25)
+   평소에는 닫혀 있어 배치표를 가리지 않는다. 줄을 누르면 그 호실 메모장이 열린다.
+   ============================================================ */
+var LIST_ON = false;
+function noteHay(k, d, h, f) {
+  return norm(dongLabel(d) + h + '호' + f + '층' + hoNum(f, h) + ' ' + k + ' '
+    + statesLabel(statesOf(k)) + ' ' + memoOf(k) + ' ' + fieldText(k)
+    + (isUrgent(k) ? ' 급매' : '') + (isOtherProp(k) ? ' 타부동산' : ''));
+}
+function listRows() {
+  var f = curFilter(), out = [];
+  (BOARD.units || []).forEach(function (u) {
+    var k = K(u[0], u[1], u[2]), n = S.notes[k];
+    if (!n || !(hasInfoNote(n) || statesFromNote(n).length)) return;
+    if (f.dg && String(u[0]) !== String(f.dg)) return;
+    if (f.ty && u[3] !== f.ty) return;
+    var ss = statesFromNote(n);
+    if ((f.st === 'sale' || f.st === 'jeonse' || f.st === 'wolse' || f.st === 'done') && ss.indexOf(f.st) < 0) return;
+    if (f.st === 'urgent' && !isUrgent(k)) return;
+    if (f.st === 'memo' && !hasInfo(k)) return;
+    if (f.q && noteHay(k, u[0], u[1], u[2]).indexOf(f.q) < 0) return;
+    out.push({ k: k, u: u, n: n, ss: ss });
+  });
+  out.sort(function (a, b) { return (a.u[0] - b.u[0]) || (b.u[2] - a.u[2]) || (a.u[1] - b.u[1]); });
+  return out;
+}
+function filterSummary(f) {
+  var stk = { sale: '매매', jeonse: '전세', wolse: '월세', done: '보류·완료', urgent: '급매', memo: '메모있음' };
+  var parts = [];
+  if (f.st !== 'all') parts.push(stk[f.st] || '');
+  if (f.ty) parts.push(typeFull(f.ty));
+  if (f.dg) parts.push(dongLabel(f.dg));
+  if (f.q) parts.push('"' + $('q').value.trim() + '"');
+  return parts.filter(Boolean).join(' · ');
+}
+function renderList() {
+  var el = $('listpanel'); if (!el) return;
+  if (!LIST_ON) { el.hidden = true; return; }
+  var rows = listRows(), sum = filterSummary(curFilter());
+  var head = '<div class="lp-head"><b>' + esc(CX.name) + '</b><span>' + esc(sum || '전체 매물') + '</span>'
+    + '<span class="lp-n">' + rows.length.toLocaleString('ko-KR') + '호실</span></div>';
+  if (!rows.length) {
+    el.innerHTML = head + '<div class="lp-empty">조건에 맞는 매물이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = head + '<div class="lp-list">' + rows.map(function (r) {
+    var u = r.u, k = r.k, n = r.n, ss = r.ss;
+    var price = priceText(ss, pricesOf(n)) || str(n.price);
+    var who = str(n.owner) ? (leaseState(n) ? '임대인 ' : '소유주 ') + esc(str(n.owner)) : '';
+    var ph = str(n.phone);
+    var line2 = [who, ph ? esc(ph) : ''].filter(Boolean).join(' · ');
+    var memo = String(memoOf(k) || '').replace(/\s+/g, ' ').trim();
+    return '<button type="button" class="lp-row" data-k="' + k + '">'
+      + '<span class="lp-l1"><b>' + esc(dongLabel(u[0]) + ' ' + hoNum(u[2], u[1]) + '호') + '</b>'
+      + (ss.length ? ss.map(function (s) { return '<i class="lp-st s-' + s + '">' + ST_NAME[s] + '</i>'; }).join('')
+                   : '<i class="lp-st">미확인</i>')
+      + (isUrgent(k) ? '<i class="lp-u">(급)</i>' : '')
+      + (isOtherProp(k) ? '<i class="lp-op">✓타부동산</i>' : '')
+      + (price ? '<em class="lp-price">' + esc(price) + '</em>' : '')
+      + '</span>'
+      + (line2 ? '<span class="lp-l2">' + line2 + '</span>' : '')
+      + (memo ? '<span class="lp-l3">' + esc(memo) + '</span>' : '')
+      + '</button>';
+  }).join('') + '</div>';
+}
+function setList(on) {
+  LIST_ON = !!on;
+  var b = $('btn-list');
+  if (b) { b.classList.toggle('on', LIST_ON); b.setAttribute('aria-pressed', LIST_ON ? 'true' : 'false'); }
+  var el = $('listpanel');
+  if (el) el.hidden = !LIST_ON;
+  $('board').hidden = LIST_ON;
+  $('tabs').hidden = LIST_ON;
+  if (LIST_ON) { renderList(); window.scrollTo(0, 0); }
+  else if (S.ready) applyZoom();
+}
+
+/* ============================================================
    툴팁 (PC)
    ============================================================ */
 var tipEl = $('tip'), tipOn = false;
@@ -991,7 +1070,7 @@ function showTip(td, x, y) {
     + (ft ? '<em class="fl">' + esc(ft) + '</em>' : '')
     + '<em class="ar">공급 <b>' + sup.toFixed(2) + '㎡</b> (' + py(sup) + '평) · 전용 <b>' + jeon.toFixed(2) + '㎡</b> (' + py(jeon) + '평)</em>'
     + (memo ? '<s>' + esc(memo.slice(0, 110)) + '</s>' : '')
-    + '<u>' + (COARSE ? '한 번 탭' : '더블클릭') + '하면 메모장 · 색상 · 계약금</u>';
+    + '<u>한 번 누르면 메모장 · 색상 · 계약금</u>';
   tipEl.classList.add('on'); tipOn = true;
   moveTip(x, y);
 }
@@ -1028,17 +1107,66 @@ var mcP = { sale: $('mc-price-in'), jeonse: $('mc-price-jeonse'), wolse: $('mc-p
 var mcPRows = { sale: $('mc-row-sale'), jeonse: $('mc-row-jeonse'), wolse: $('mc-row-wolse') };
 function priceInputs() { return [mcP.sale, mcP.jeonse, mcP.wolse]; }
 
-var cur = null, curTd = null, selTd = null, curBase = '', saveT = null, justOpened = false, joT = null, posT = null;
+var cur = null, curTd = null, selTd = null, curBase = '', curOrigMemo = '', saveT = null, justOpened = false, joT = null, posT = null;
+
+/* ---------- 소유주 연락처 여러 개 ----------
+   화면은 입력칸을 여러 개로 나누지만, 저장은 예전처럼 owner_phone 한 칸에
+   '010-1111-1111, 010-2222-2222' 처럼 ', '로 이어서 넣는다(DB 스키마 그대로). */
+function extInputs() {
+  return Array.prototype.slice.call(document.querySelectorAll('#mc-ext-phone input'));
+}
+function extPhoneList() {
+  return extInputs().map(function (i) { return i.value.trim(); });
+}
+function phoneAll() {
+  var arr = [mcIn.phone.value.trim()].concat(extPhoneList());
+  return arr.filter(function (v) { return !!v; }).join(', ');
+}
+function splitPhones(v) {
+  return String(v == null ? '' : v).split(/\s*,\s*/).map(function (s) { return s.trim(); })
+    .filter(function (s) { return !!s; });
+}
+function addPhoneRow(val) {
+  var row = document.createElement('div');
+  row.className = 'mc-ext';
+  row.innerHTML = '<input type="tel" inputmode="tel" placeholder="010-0000-0000" autocomplete="off">'
+    + '<button type="button" class="mc-extx" aria-label="이 연락처 지우기" title="이 연락처 지우기">×</button>';
+  var inp = row.querySelector('input');
+  if (val) inp.value = fmtPhone(val);
+  inp.addEventListener('input', function () {
+    if (RO) return;
+    var v = fmtPhone(inp.value);
+    if (v !== inp.value) { inp.value = v; try { inp.setSelectionRange(v.length, v.length); } catch (e) {} }
+    onEditorChanged();
+  });
+  inp.addEventListener('blur', function () { if (inp.value !== fmtPhone(inp.value)) inp.value = fmtPhone(inp.value); });
+  row.querySelector('button').onclick = function () {
+    if (RO) return;
+    row.remove(); onEditorChanged();
+  };
+  $('mc-ext-phone').appendChild(row);
+  return inp;
+}
+function renderExtPhones(list) {
+  $('mc-ext-phone').innerHTML = '';
+  (list || []).forEach(function (v) { addPhoneRow(v); });
+}
 
 function curSig() {
-  var o = { memo: mcMemo.value };
-  FIELDS.forEach(function (f) { o[f] = mcIn[f].value; });
+  var o = { memo: mcMemo.value, ext: extPhoneList().join('|') };
+  FIELDS.forEach(function (f) { o[f] = (f === 'phone') ? mcIn.phone.value.trim() : mcIn[f].value; });
   priceInputs().forEach(function (el, i) { o['p' + i] = el.value; });
   return JSON.stringify(o);
 }
+function curDirty() { return !!cur && curSig() !== curBase; }
 function readFields() {
   var o = {};
-  FIELDS.forEach(function (f) { var v = mcIn[f].value.trim(); if (v) o[f] = v; });
+  FIELDS.forEach(function (f) {
+    if (f === 'phone') return;
+    var v = mcIn[f].value.trim(); if (v) o[f] = v;
+  });
+  var ph = phoneAll();
+  if (ph) o.phone = ph;
   return o;
 }
 function isGenericState(ss) {
@@ -1066,13 +1194,19 @@ function applyPrices(n, ss) {
 function fillEditor(k) {
   var n = S.notes[k] || {}, ss = statesFromNote(n), ps = pricesOf(n), gen = isGenericState(ss);
   FIELDS.forEach(function (f) {
+    if (f === 'phone') return;
     var v = str(n[f]);
-    mcIn[f].value = (f === 'phone' || f === 'tphone') ? fmtPhone(v) : v;
+    mcIn[f].value = (f === 'tphone') ? fmtPhone(v) : v;
   });
+  var ph = splitPhones(n.phone);
+  mcIn.phone.value = ph.length ? fmtPhone(ph[0]) : '';
+  renderExtPhones(ph.slice(1));
   mcP.sale.value = ss.indexOf('sale') >= 0 ? str(ps.sale) : (gen ? str(ps.etc) : '');
   mcP.jeonse.value = str(ps.jeonse);
   mcP.wolse.value = str(ps.wolse);
   mcMemo.value = memoOf(k);
+  /* 저장할 때 비교할 직전 저장본 — 날짜 누적 정리의 기준이 된다 */
+  curOrigMemo = mcMemo.value;
   curBase = curSig();
   setStatusUI(ss);
   setUrgUI(isUrgent(k));
@@ -1099,13 +1233,15 @@ function setStatusUI(ss) {
 function applyROView() {
   var ro = !!RO;
   mc.classList.toggle('ro', ro);
-  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).concat(priceInputs()).forEach(function (el) {
+  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).concat(priceInputs()).concat(extInputs()).forEach(function (el) {
     el.readOnly = ro;
     if (ro) el.setAttribute('tabindex', '-1'); else el.removeAttribute('tabindex');
   });
   document.querySelectorAll('#mc-stat button').forEach(function (b) { b.disabled = ro; });
   mcUrg.disabled = ro; mcOp.disabled = ro;
   $('mc-del').hidden = ro;
+  $('mc-save').hidden = ro;
+  var ap = $('mc-add-phone'); if (ap) ap.hidden = ro;
   if (ro) { mcSaved.textContent = '읽기 전용 · 보기만'; mcSaved.classList.add('on'); }
   else { mcSaved.textContent = '저장됨'; mcSaved.classList.remove('on'); }
 }
@@ -1168,7 +1304,13 @@ function openCard(td) {
   if (!td) return;
   var key = td.dataset.k, u = IDX.get(key);
   if (!u) return;
-  if (cur && cur !== key) writeNote(true);
+  if (cur && cur !== key) {
+    /* 다른 호실로 옴길 때 저장하지 않은 내용이 있으면 먼저 묻는다 */
+    if (curDirty()) { askUnsaved('move', function () { openCard(td); }); return; }
+    hideCard();
+  }
+  /* 이미 열린 호실을 다시 누른 경우 — 적던 내용을 건드리지 않는다 */
+  if (cur === key) { selectCell(td); return; }
   cur = key; curTd = td;
   selectCell(td); hideTip();
 
@@ -1201,11 +1343,86 @@ function openCard(td) {
   clearTimeout(joT); joT = setTimeout(function () { justOpened = false; }, 80);
   setTimeout(function () { if (!isNarrow() && !COARSE) mcMemo.focus({ preventScroll: true }); }, 90);
 }
-function closeCard() {
+function closeCard(force) {
   if (!cur) return;
-  writeNote(false);
+  if (!force && curDirty()) { askUnsaved('close', null); return; }
+  hideCard();
+}
+/* 메모장만 닫는다(저장 없이). 열린 호실 표시는 그대로 두어 다시 누르기 쉽게 한다. */
+function hideCard() {
   mc.classList.remove('on'); ov.classList.remove('on');
   cur = null; curTd = null;
+}
+/* ---------- 저장하지 않은 내용 확인 ---------- */
+var unsEl = $('uns'), ov8 = $('ov8');
+var unsCb = null, unsMode = 'move';
+function askUnsaved(mode, cb) {
+  unsMode = mode; unsCb = cb;
+  $('uns-p').textContent = (mode === 'close')
+    ? '저장하고 닫을까요? 저장하지 않으면 지금 적은 내용이 사라집니다.'
+    : '저장하고 넘어갈까요? 저장하지 않으면 지금 적은 내용이 사라집니다.';
+  $('uns-save').textContent = (mode === 'close') ? '저장하고 닫기' : '저장하고 이동';
+  unsEl.classList.add('on'); ov8.classList.add('on');
+}
+function unsClose() { unsEl.classList.remove('on'); ov8.classList.remove('on'); unsCb = null; }
+if (unsEl) {
+  $('uns-save').onclick = function () {
+    var cb = unsCb; saveNote(); unsClose(); hideCard(); if (cb) cb();
+  };
+  $('uns-drop').onclick = function () {
+    var cb = unsCb; unsClose(); hideCard(); if (cb) cb();
+  };
+  $('uns-cancel').onclick = unsClose;
+  ov8.onclick = unsClose;
+}
+/* 화면을 옴기는 동작(홈·다른 단지) 앞에 한 번 거른다 */
+function leaveEditor(cb) {
+  if (!cur) { cb(); return; }
+  if (!curDirty()) { hideCard(); cb(); return; }
+  askUnsaved('move', cb);
+}
+/* ---------- 저장 (메모장의 [저장] 버튼) ---------- */
+function todayStamp() {
+  /* 한국 시간(Asia/Seoul) 기준 오늘 — YYYY.MM.DD */
+  try {
+    var s = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    return s.replace(/-/g, '.');
+  } catch (e) {
+    var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
+  }
+}
+/* 저장할 때마다 메모를 날짜별로 정리한다.
+   · 뒤에 이어 적었으면 그 새로 적은 부분 앞에만 [오늘]을 붙인다
+   · 처음 쓰는 메모는 맨 앞에 [오늘]을 붙인다
+   · 이미 오늘 날짜가 붙어 있으면 두 번 붙이지 않는다 */
+function withDateHeader(orig, txt) {
+  var s = String(txt == null ? '' : txt);
+  if (!s.trim()) return s;
+  var hdr = '[' + todayStamp() + ']';
+  if (s.indexOf(hdr) >= 0) return s;
+  var base = String(orig == null ? '' : orig);
+  if (base && s.indexOf(base) === 0) {
+    var added = s.slice(base.length).replace(/^[\s\u00a0]+/, '');
+    if (!added) return s;
+    return base.replace(/[\s\u00a0]+$/, '') + '\n' + hdr + '\n' + added;
+  }
+  if (/\[\d{4}\.\d{2}\.\d{2}\]/.test(s)) return s;
+  return hdr + '\n' + s.trim();
+}
+function saveNote() {
+  if (!cur || RO) return false;
+  var out = withDateHeader(curOrigMemo, mcMemo.value);
+  if (out !== mcMemo.value) mcMemo.value = out;
+  if (!curDirty()) { flashSaved('저장됨'); return true; }
+  writeNote(true);
+  curOrigMemo = mcMemo.value;
+  curBase = curSig();
+  flashSaved('저장됨');
+  scheduleFlush(120);
+  return true;
 }
 function writeNote(force) {
   if (!cur || RO) return;
@@ -1238,12 +1455,8 @@ mcStat.addEventListener('click', function (e) {
     if (i >= 0) arr.splice(i, 1); else arr.push(s);
     arr = cleanStates(arr);
   }
-  n.ss = arr; n.s = primaryOf(arr); n.memo = mcMemo.value;
-  var fld = readFields();
-  FIELDS.forEach(function (f) { n[f] = fld[f] || ''; });
-  applyPrices(n, arr);
+  n.ss = arr; n.s = primaryOf(arr);
   if (isEmpty(n) && !n.urgent && !n.op) delete S.notes[cur]; else S.notes[cur] = n;
-  curBase = curSig();
   paintCell(cur); setStatusUI(arr); updateCounts(); markDirty(cur);
   flashSaved(arr.length > 1 ? '복합 상태 저장' : '색상 저장');
 });
@@ -1266,20 +1479,19 @@ mcOp.onclick = function () {
   paintCell(cur); setOpUI(isOtherProp(cur)); updateCounts(); markDirty(cur);
   flashSaved(n.op ? '타부동산 ✓ 표시' : '타부동산 해제');
 };
-function onEditorInput() {
+/* 입력만으로는 저장하지 않는다 — 메모장 아래 [저장]을 눌러야 저장된다 */
+function onEditorChanged() {
+  if (RO) return;
   clearTimeout(saveT);
-  mcSaved.textContent = '입력 중…';
+  mcSaved.textContent = '저장 버튼을 누르세요';
   mcSaved.classList.add('on');
-  saveT = setTimeout(function () { writeNote(false); flashSaved('저장 중…'); scheduleFlush(200); }, 450);
 }
-mcMemo.addEventListener('input', onEditorInput);
+mcMemo.addEventListener('input', onEditorChanged);
 FIELDS.forEach(function (f) {
-  mcIn[f].addEventListener('input', onEditorInput);
-  mcIn[f].addEventListener('blur', function () { writeNote(false); });
+  mcIn[f].addEventListener('input', onEditorChanged);
 });
 priceInputs().forEach(function (el) {
-  el.addEventListener('input', onEditorInput);
-  el.addEventListener('blur', function () { writeNote(false); });
+  el.addEventListener('input', onEditorChanged);
 });
 /* 연락처는 숫자만 넣어도 보기 좋게 하이픈을 넣어 준다 (저장 값은 이 모양 그대로) */
 function phoneDigits(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''); }
@@ -1320,16 +1532,24 @@ function fmtPhone(v) {
     }
   });
 });
-mcMemo.addEventListener('blur', function () { writeNote(false); });
-$('mc-x').onclick = closeCard;
+/* 연락처 추가 — 소유주·임대인 번호를 두 명 이상 적을 수 있다 */
+$('mc-add-phone').onclick = function () {
+  if (!cur || RO) return;
+  var inp = addPhoneRow('');
+  onEditorChanged();
+  try { inp.focus(); } catch (e) {}
+};
+$('mc-save').onclick = function () { saveNote(); };
+$('mc-x').onclick = function () { closeCard(); };
 /* 메모장 바깥 배경을 잘못 누른 것으로 닫히지 않는다 — 닫기는 × 버튼과 Esc 만 */
 $('mc-del').onclick = function () {
   if (!cur || RO) return;
   if (!confirm('이 호실의 메모·금액·연락처·색상을 모두 지울까요?')) return;
   delete S.notes[cur];
   mcMemo.value = ''; FIELDS.forEach(function (f) { mcIn[f].value = ''; });
+  renderExtPhones([]);
   priceInputs().forEach(function (el) { el.value = ''; });
-  curBase = curSig();
+  curOrigMemo = ''; curBase = curSig();
   paintCell(cur); setStatusUI('none'); setUrgUI(false); setOpUI(false); updateCounts(); markDirty(cur);
   flashSaved('삭제됨');
 };
@@ -1342,20 +1562,13 @@ MQ_NARROW.addEventListener('change', function () {
   if (isNarrow()) { mc.style.left = ''; mc.style.top = ''; }
   else placeCard();
 });
-window.addEventListener('beforeunload', function () { if (cur) writeNote(true); });
+/* 창을 닫을 때는 따로 저장하지 않는다 — 저장은 메모장의 [저장] 버튼으로만 한다 */
 
-/* ---------- 호실 클릭 ---------- */
+/* ---------- 호실 클릭 (PC·모바일 모두 한 번에 열린다) ---------- */
 boardEl.addEventListener('click', function (e) {
   var td = e.target.closest('td.c[data-k]');
   if (!td) return;
   selectCell(td);
-  if (isNarrow() || COARSE) openCard(td);
-});
-boardEl.addEventListener('dblclick', function (e) {
-  var td = e.target.closest('td.c[data-k]');
-  if (!td) return;
-  e.preventDefault();
-  if (window.getSelection) window.getSelection().removeAllRanges();
   openCard(td);
 });
 
@@ -1377,6 +1590,16 @@ $('seg-status').addEventListener('click', function (e) {
 });
 $('sel-type').addEventListener('change', applyFilters);
 $('sel-dong').addEventListener('change', applyFilters);
+/* 목록 보기 토글 — 평소 닫혀 있고, 누르면 지금 조건의 매물을 글자로 보여 준다 */
+$('btn-list').onclick = function () { setList(!LIST_ON); };
+$('listpanel').addEventListener('click', function (e) {
+  var b = e.target.closest('.lp-row'); if (!b) return;
+  var k = b.dataset.k;
+  setList(false);
+  var td = cellMap.get(k); if (!td) return;
+  try { td.scrollIntoView({ block: 'center' }); } catch (e2) { try { td.scrollIntoView(); } catch (e3) {} }
+  setTimeout(function () { openCard(td); }, 60);
+});
 var qEl = $('q');
 qEl.addEventListener('input', function () {
   $('qclr').style.display = qEl.value ? 'block' : 'none';
@@ -1455,9 +1678,8 @@ window.addEventListener('resize', function () {
   }, 120);
 });
 function setGuide() {
-  var tap = (COARSE || isNarrow()) ? '한 번 탭' : '더블클릭';
   var tail = isNarrow() ? '' : (CX.price ? ' · 분양가 · 색상' : ' · 면적 · 색상');
-  $('guide-sub').innerHTML = (LIVE ? '' : '데모 모드 · ') + '호실을 <b>' + tap + '</b>하면 메모장' + tail;
+  $('guide-sub').innerHTML = (LIVE ? '' : '데모 모드 · ') + '호실을 <b>클릭</b>하면 메모장' + tail;
 }
 
 /* ============================================================
@@ -1754,7 +1976,10 @@ $('su-consent').addEventListener('change', function () {
 document.addEventListener('keydown', function (e) {
   var t = e.target;
   var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-  if (e.key === 'Escape') { closeCard(); showHelp(false); hideTip(); admClose(); wipeOpen(false); expClose(); meClose(); return; }
+  if (e.key === 'Escape') {
+    if (unsEl && unsEl.classList.contains('on')) { unsClose(); return; }
+    closeCard(); showHelp(false); hideTip(); admClose(); wipeOpen(false); expClose(); meClose(); return;
+  }
   if (!S.ready || typing) return;
   if (e.key === '/') { e.preventDefault(); qEl.focus(); return; }
   if (e.key === 'f' || e.key === 'F') { VIEW.zoom = 'fit'; saveView(); applyZoom(); return; }
@@ -1764,7 +1989,7 @@ document.addEventListener('keydown', function (e) {
 });
 
 async function signOut() {
-  if (cur) writeNote(true);
+  if (cur) saveNote();
   try { await flush(); } catch (e) {}
   clearTimeout(flushT);
   try { if (LIVE && S.sb) { if (S.chan) await S.sb.removeChannel(S.chan); await S.sb.auth.signOut(); } } catch (e) {}
@@ -2244,8 +2469,12 @@ function initCxUI() {
 
 function openHome() {
   if (RO) return;
+  leaveEditor(openHomeNow);
+}
+function openHomeNow() {
   HOME_ON = true;
-  hideTip(); if (typeof closeCard === 'function') closeCard();
+  hideTip();
+  setList(false);
   $('page').hidden = true;
   $('home').hidden = false;
   if ($('bar')) $('bar').classList.add('home-mode');
@@ -2260,8 +2489,12 @@ function openHome() {
 }
 
 function openComplex(id, focusKey) {
+  leaveEditor(function () { openComplexNow(id, focusKey); });
+}
+function openComplexNow(id, focusKey) {
   var cx = cxById(id);
   HOME_ON = false;
+  setList(false);
   setComplex(cx);
   setLastCx(cx.id);
   $('home').hidden = true;
@@ -2442,6 +2675,93 @@ if ($('btn-me')) $('btn-me').onclick = meOpen;
 if ($('me-x')) $('me-x').onclick = meClose;
 if ($('me-close')) $('me-close').onclick = meClose;
 if (ov7) ov7.onclick = meClose;
+
+/* ============================================================
+   피클(AI) 연동 안내 — 복사 한 번으로 AI가 바로 조회·등록할 수 있는 스펙
+   (화면 안내는 짧게, 복사되는 글은 AI가 실행할 수 있게 정확하게)
+   ============================================================ */
+function pickleGuide() {
+  var cfg = window.CENTUM_CONFIG || {};
+  var sb = cfg.SUPABASE_URL || 'https://trcytxrztbeknbtqvymv.supabase.co';
+  var anon = cfg.SUPABASE_ANON_KEY || '';
+  var myId = (S.profile && S.profile.username) || realMail(S.user && S.user.email) || '';
+  var L = [];
+  L.push('매물콕 — 공인중개사 전용 매물장 (내 계정 매물만 보입니다)');
+  L.push('');
+  L.push('[접속]');
+  L.push('주소: https://maemulcok.github.io/   (PC·휴대폰 공용, 반응형 — 앱 설치 없음)');
+  L.push('· 호실을 한 번 클릭하면 메모장이 열립니다. (더블클릭 필요 없음)');
+  L.push('· 상단 [목록] 버튼을 누르면 지금 검색·필터에 맞는 매물이 글자 목록으로 나옵니다.');
+  L.push('· 메모장에서 고친 내용은 [저장]을 눌러야 저장됩니다.');
+  L.push('');
+  L.push('[내 계정]');
+  L.push('아이디: ' + (myId || '(내 매물콕 아이디)'));
+  L.push('비밀번호: (내 매물콕 비밀번호 — 피클에게 한 번만 알려주세요)');
+  L.push('');
+  L.push('[직접 연동 — Supabase]');
+  L.push('SUPABASE_URL = ' + sb);
+  L.push('SUPABASE_ANON_KEY = ' + anon);
+  L.push('');
+  L.push('1) 로그인');
+  L.push('POST ' + sb + '/auth/v1/token?grant_type=password');
+  L.push('headers: apikey: ' + anon + ' / Content-Type: application/json');
+  L.push('body: {"email":"<로그인 이메일>","password":"<비밀번호>"}');
+  L.push('· 아이디에 @가 있으면 그대로 email로 넣습니다.');
+  L.push('· 한글·영문 상호 아이디는 내부 주소로 바꿔 넣습니다: u_<아이디의 UTF-8 바이트 16진수>@id.centumleel.local');
+  L.push('  예) 골드 → u_eab3a8eb939c@id.centumleel.local');
+  L.push('→ 받은 access_token을 아래 요청의 Authorization: Bearer <토큰> 에 넣습니다. apikey는 그대로 둡니다.');
+  L.push('');
+  L.push('2) 내 user_id');
+  L.push('GET ' + sb + '/rest/v1/profiles?select=id');
+  L.push('→ 응답의 id 가 내 user_id 입니다.');
+  L.push('');
+  L.push('3) 조회');
+  L.push('GET ' + sb + '/rest/v1/listings?select=*&user_id=eq.<user_id>&complex=eq.<complex>');
+  L.push('· complex: 센텀르엘=centum, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith');
+  L.push('· 예) 제니스 급매 → …&complex=eq.zenith&urgent=eq.true');
+  L.push('');
+  L.push('4) 등록·수정 (같은 호실은 덮어씁니다)');
+  L.push('POST ' + sb + '/rest/v1/listings?on_conflict=user_id,unit_key');
+  L.push('headers: Prefer: resolution=merge-duplicates / Content-Type: application/json');
+  L.push('body: {"user_id":"<user_id>","unit_key":"201-1-25","complex":"zenith","status":"sale",');
+  L.push('       "prices":{"sale":"15억"},"price":"15억","owner_name":"홍길동","phone":"010-8888-8888",');
+  L.push('       "memo":"[2026.11.25]\n15억 희망","urgent":false,"other_prop":false}');
+  L.push('· status: none|sale|jeonse|wolse|done (대표 하나) / 매매·전세·월세를 같이 올릴 때는 statuses:"sale,jeonse"');
+  L.push('· prices: {"sale":"…","jeonse":"…","wolse":"…","etc":"…"} / price 에 대표 금액을 같이 넣습니다.');
+  L.push('· phone: 소유주(임대인) 연락처. 두 명 이상이면 ", "로 이어 적습니다. (예: 010-1111-1111, 010-2222-2222)');
+  L.push('· 급매는 urgent:true, 타부동산은 other_prop:true 입니다.');
+  L.push('');
+  L.push('5) unit_key 규칙 — {동번호}-{호라인}-{층}');
+  L.push('· 센텀르엘 101동 2501호 → 101-1-25   · 해운대아이파크 1동 2501호 → 1-1-25');
+  L.push('· 제니스는 화면의 101~103동이 내부 201~203 → 제니스 101동 2501호 → 201-1-25');
+  L.push('  (2501호 = 1호라인 25층)');
+  return L.join('\n');
+}
+function copyText(t) {
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+  return new Promise(function (res, rej) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.left = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = document.execCommand('copy');
+      ta.remove();
+      if (ok) res(); else rej(new Error('copy failed'));
+    } catch (e) { rej(e); }
+  });
+}
+if ($('me-pickle-copy')) $('me-pickle-copy').onclick = function () {
+  var b = this, t0 = b.textContent;
+  meMsg('me-pickle-msg', '');
+  copyText(pickleGuide()).then(function () {
+    meMsg('me-pickle-msg', '복사했습니다. 쓰고 계신 피클(AI)에게 그대로 붙여 넣어 주세요.', true);
+    toast('피클 연동 안내를 복사했습니다.');
+  }).catch(function () {
+    meMsg('me-pickle-msg', '복사하지 못했습니다. 한 번 더 눌러 주세요.');
+  });
+  b.textContent = t0;
+};
 
 /* 상호명 저장 — profiles.agency_name + 화면 상단 즉시 반영 */
 if ($('me-office-go')) $('me-office-go').onclick = async function () {
@@ -2667,7 +2987,6 @@ function onRemoteChange(payload) {
 /* 창을 다시 열면 서버 기록과 맞춘다 */
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'hidden') {
-    if (cur) writeNote(true);
     if (S.pending.size) flush();
     return;
   }
@@ -3003,7 +3322,7 @@ async function admViewBoard(uid, btn) {
     return;
   }
   /* 내가 쓰던 메모장·저장 대기열을 먼저 정리한다 */
-  if (cur) { mc.classList.remove('on'); ov.classList.remove('on'); cur = null; curTd = null; selectCell(null); }
+  if (cur) { hideCard(); selectCell(null); }
   try { if (S.pending.size && !RO) await flush(); } catch (e) {}
   var notes = {};
   (res.data || []).forEach(function (r) { notes[r.unit_key] = rowToNote(r); });
@@ -3030,7 +3349,7 @@ async function admViewBoard(uid, btn) {
 async function roExit() {
   if (!RO) return;
   var back = RO.uid, office = RO.office;
-  if (cur) { mc.classList.remove('on'); ov.classList.remove('on'); cur = null; curTd = null; selectCell(null); }
+  if (cur) { hideCard(); selectCell(null); }
   RO = null;
   $('robar').hidden = true;
   $('btn-reset').hidden = false;
