@@ -1027,7 +1027,7 @@ function renderList() {
     var who = str(n.owner) ? (leaseState(n) ? '임대인 ' : '소유주 ') + esc(str(n.owner)) : '';
     var ph = str(n.phone);
     var line2 = [who, ph ? esc(ph) : ''].filter(Boolean).join(' · ');
-    var memo = String(memoOf(k) || '').replace(/\s+/g, ' ').trim();
+    var memo = memoFlat(memoOf(k));
     return '<button type="button" class="lp-row" data-k="' + k + '">'
       + '<span class="lp-l1"><b>' + esc(dongLabel(u[0]) + ' ' + hoNum(u[2], u[1]) + '호') + '</b>'
       + (ss.length ? ss.map(function (s) { return '<i class="lp-st s-' + s + '">' + ST_NAME[s] + '</i>'; }).join('')
@@ -1062,7 +1062,7 @@ function showTip(td, x, y) {
   var u = IDX.get(key); if (!u) return;
   var ss = statesOf(key), st = primaryOf(ss), sup = unitSup(u), jeon = unitJeon(u);
   var tname = typeFull(t);
-  var memo = memoOf(key).replace(/\n+/g, ' · ').replace(/\s+/g, ' ').trim();
+  var memo = memoFlat(memoOf(key));
   var ft = fieldText(key), urg = isUrgent(key), op = isOtherProp(key);
   /* 복합 상태면 색 두세 개를 나란히 견다 */
   var sw = (ss.length ? ss : ['none']).map(function (s) {
@@ -1103,16 +1103,31 @@ window.addEventListener('scroll', hideTip, { passive: true });
    ============================================================ */
 var mc = $('mc'), ov = $('ov');
 var mcHo = $('mc-ho'), mcType = $('mc-type'), mcPrice = $('mc-price'), mcGy = $('mc-gy'),
-    mcJn = $('mc-jn'), mcGye = $('mc-gye'), mcMemo = $('mc-memo'), mcSaved = $('mc-saved'),
+    mcJn = $('mc-jn'), mcGye = $('mc-gye'), mmWrap = $('mc-memos'), mcSaved = $('mc-saved'),
     mcStat = $('mc-stat'), mcFields = $('mc-fields'), mcUrg = $('mc-urg');
 var mcOp = $('mc-op');
 var mcIn = { owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant'), tphone: $('mc-tphone'), end: $('mc-end') };
 /* 금액 칸 — 상태별로 따로 적는다. mc-price-in 은 매매가이자, 상태가 없을 때의 '금액' 칸이다 */
-var mcP = { sale: $('mc-price-in'), jeonse: $('mc-price-jeonse'), wolse: $('mc-price-wolse') };
+var mcP = { sale: $('mc-price-in'), jeonse: $('mc-price-jeonse') };
+/* 월세 — 보증금과 월세를 두 칸으로 나누어 적는다 */
+var mcW = { dep: $('mc-wolse-dep'), mon: $('mc-wolse-mon') };
 var mcPRows = { sale: $('mc-row-sale'), jeonse: $('mc-row-jeonse'), wolse: $('mc-row-wolse') };
-function priceInputs() { return [mcP.sale, mcP.jeonse, mcP.wolse]; }
+function priceInputs() { return [mcP.sale, mcP.jeonse, mcW.dep, mcW.mon]; }
+/* DB에는 예전처럼 "보증금 / 월세" 한 문자열로 남긴다(기존 매물·검색·백업과 그대로 호환). */
+function wolseVal() {
+  var d = str(mcW.dep.value), m = str(mcW.mon.value);
+  if (d && m) return d + ' / ' + m;
+  if (d) return d;
+  if (m) return '/ ' + m;
+  return '';
+}
+function splitWolse(v) {
+  var s = str(v), i = s.indexOf('/');
+  if (i < 0) return { dep: s, mon: '' };
+  return { dep: s.slice(0, i).trim(), mon: s.slice(i + 1).trim() };
+}
 
-var cur = null, curTd = null, selTd = null, curBase = '', curOrigMemo = '', saveT = null, justOpened = false, joT = null, posT = null;
+var cur = null, curTd = null, selTd = null, curBase = '', saveT = null, justOpened = false, joT = null, posT = null;
 
 /* ---------- 소유주 연락처 여러 개 ----------
    화면은 입력칸을 여러 개로 나누지만, 저장은 예전처럼 owner_phone 한 칸에
@@ -1164,7 +1179,7 @@ function renderExtPhones(list) {
 }
 
 function curSig() {
-  var o = { memo: mcMemo.value, ph: phoneSig() };
+  var o = { memo: memoText(), ph: phoneSig() };
   FIELDS.forEach(function (f) { if (f !== 'phone') o[f] = mcIn[f].value; });
   priceInputs().forEach(function (el, i) { o['p' + i] = el.value; });
   return JSON.stringify(o);
@@ -1190,7 +1205,7 @@ function readPrices(ss) {
   if (arr.indexOf('sale') >= 0) o.sale = mcP.sale.value.trim();
   else if (isGenericState(arr)) o.etc = mcP.sale.value.trim();
   if (arr.indexOf('jeonse') >= 0) o.jeonse = mcP.jeonse.value.trim();
-  if (arr.indexOf('wolse') >= 0) o.wolse = mcP.wolse.value.trim();
+  if (arr.indexOf('wolse') >= 0) o.wolse = wolseVal();
   return o;
 }
 /* 상태별 금액을 정리한다. 지금 고른 상태에서 빈 칸이면 그 금액만 지우고,
@@ -1214,10 +1229,10 @@ function fillEditor(k) {
   renderExtPhones(ph.slice(1));
   mcP.sale.value = ss.indexOf('sale') >= 0 ? str(ps.sale) : (gen ? str(ps.etc) : '');
   mcP.jeonse.value = str(ps.jeonse);
-  mcP.wolse.value = str(ps.wolse);
-  mcMemo.value = memoOf(k);
-  /* 저장할 때 비교할 직전 저장본 — 날짜 누적 정리의 기준이 된다 */
-  curOrigMemo = mcMemo.value;
+  var w = splitWolse(ps.wolse);
+  mcW.dep.value = w.dep; mcW.mon.value = w.mon;
+  renderMemo(memoOf(k));
+  /* 저장할 때 비교할 직전 저장본 */
   curBase = curSig();
   setStatusUI(ss);
   setUrgUI(isUrgent(k));
@@ -1244,10 +1259,11 @@ function setStatusUI(ss) {
 function applyROView() {
   var ro = !!RO;
   mc.classList.toggle('ro', ro);
-  [mcMemo].concat(FIELDS.map(function (f) { return mcIn[f]; })).concat(priceInputs()).concat(extInputs()).forEach(function (el) {
+  FIELDS.map(function (f) { return mcIn[f]; }).concat(priceInputs()).concat(extInputs()).forEach(function (el) {
     el.readOnly = ro;
     if (ro) el.setAttribute('tabindex', '-1'); else el.removeAttribute('tabindex');
   });
+  mmSetRO(ro);
   document.querySelectorAll('#mc-stat button').forEach(function (b) { b.disabled = ro; });
   mcUrg.disabled = ro; mcOp.disabled = ro;
   $('mc-del').hidden = ro;
@@ -1352,7 +1368,7 @@ function openCard(td) {
 
   justOpened = true;
   clearTimeout(joT); joT = setTimeout(function () { justOpened = false; }, 80);
-  setTimeout(function () { if (!isNarrow() && !COARSE) mcMemo.focus({ preventScroll: true }); }, 90);
+  setTimeout(function () { if (!isNarrow() && !COARSE) mmFocusToday(); }, 90);
 }
 function closeCard(force) {
   if (!cur) return;
@@ -1405,31 +1421,137 @@ function todayStamp() {
     return d.getFullYear() + '.' + p(d.getMonth() + 1) + '.' + p(d.getDate());
   }
 }
-/* 저장할 때마다 메모를 날짜별로 정리한다.
-   · 뒤에 이어 적었으면 그 새로 적은 부분 앞에만 [오늘]을 붙인다
-   · 처음 쓰는 메모는 맨 앞에 [오늘]을 붙인다
-   · 이미 오늘 날짜가 붙어 있으면 두 번 붙이지 않는다 */
-function withDateHeader(orig, txt) {
-  var s = String(txt == null ? '' : txt);
-  if (!s.trim()) return s;
-  var hdr = '[' + todayStamp() + ']';
-  if (s.indexOf(hdr) >= 0) return s;
-  var base = String(orig == null ? '' : orig);
-  if (base && s.indexOf(base) === 0) {
-    var added = s.slice(base.length).replace(/^[\s\u00a0]+/, '');
-    if (!added) return s;
-    return base.replace(/[\s\u00a0]+$/, '') + '\n' + hdr + '\n' + added;
+/* ---------- 기타 메모 — 날짜마다 칸 ----------
+   DB에는 예전처럼 "[YYYY.MM.DD]" 머리글을 단 한 덩이 글로 남기고(검색·백업·API 호환),
+   화면에서는 날짜별 카드로 나누어 보여 준다. 저장할 때 날짜 순서대로 다시 합진다. */
+var MM_RE = /\[\s*(\d{4})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*\]/g;
+function pad2(v) { v = String(v); return v.length >= 2 ? v : ('0' + v).slice(-2); }
+function mmDateText(y, m, d) { return y + '.' + pad2(m) + '.' + pad2(d); }
+/* 메모를 한 줄로 — 날짜 머리글은 "2026.11.10" 으로만 남긴다(툴팁·목록) */
+function memoFlat(txt) {
+  return String(txt == null ? '' : txt)
+    .replace(/\[\s*(\d{4})\s*[.\-\/]\s*(\d{1,2})\s*[.\-\/]\s*(\d{1,2})\s*\]/g, function (all, y, m, d) {
+      return mmDateText(y, m, d);
+    })
+    .replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim();
+}
+function parseMemo(txt) {
+  var s = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
+  var out = { legacy: '', days: [] };
+  if (!s.trim()) return out;
+  MM_RE.lastIndex = 0;
+  var m, marks = [];
+  while ((m = MM_RE.exec(s))) marks.push({ at: m.index, end: MM_RE.lastIndex, date: mmDateText(m[1], m[2], m[3]) });
+  if (!marks.length) { out.legacy = s.trim(); return out; }
+  if (marks[0].at > 0) out.legacy = s.slice(0, marks[0].at).trim();
+  marks.forEach(function (mk, i) {
+    var stop = (i + 1 < marks.length) ? marks[i + 1].at : s.length;
+    var body = s.slice(mk.end, stop).replace(/^\s+/, '').replace(/\s+$/, '');
+    var hit = null;
+    out.days.forEach(function (d) { if (d.date === mk.date) hit = d; });
+    if (hit) { if (body) hit.body = hit.body ? hit.body + '\n' + body : body; }
+    else out.days.push({ date: mk.date, body: body });
+  });
+  out.days.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+  return out;
+}
+/* 화면의 날짜 칸을 하나의 글로 합친다(저장할 값) */
+function memoText() {
+  var parts = [];
+  Array.prototype.forEach.call(mmWrap.querySelectorAll('.mm-card'), function (c) {
+    var ta = c.querySelector('textarea'); if (!ta) return;
+    var body = String(ta.value == null ? '' : ta.value).replace(/\s+$/, '').replace(/^\s+/, '');
+    if (!body) return;
+    var d = c.getAttribute('data-date');
+    parts.push(d ? ('[' + d + ']\n' + body) : body);
+  });
+  return parts.join('\n\n');
+}
+function mmTextareas() { return Array.prototype.slice.call(mmWrap.querySelectorAll('textarea')); }
+function mmGrow(ta) {
+  if (!ta) return;
+  var max = Math.max(80, Math.round(window.innerHeight * (isNarrow() ? 0.26 : 0.3)));
+  ta.style.height = 'auto';
+  var h = Math.min(Math.max(ta.scrollHeight + 2, 40), max);
+  ta.style.height = h + 'px';
+  ta.style.overflowY = (ta.scrollHeight + 2 > max) ? 'auto' : 'hidden';
+  if (!isNarrow()) schedulePlace();
+}
+function mmCard(date, body, isToday) {
+  var card = document.createElement('div');
+  card.className = 'mm-card' + (date ? '' : ' mm-od');
+  if (date) card.setAttribute('data-date', date);
+  var head = document.createElement('div'); head.className = 'mm-head';
+  var lab = document.createElement('span'); lab.className = 'mm-date';
+  if (date) {
+    lab.textContent = '📅 ' + date;
+    if (isToday) {
+      lab.appendChild(document.createTextNode(' '));
+      var now = document.createElement('i'); now.className = 'mm-now'; now.textContent = '오늘';
+      lab.appendChild(now);
+    }
+  } else {
+    lab.textContent = '기존 메모';
   }
-  if (/\[\d{4}\.\d{2}\.\d{2}\]/.test(s)) return s;
-  return hdr + '\n' + s.trim();
+  head.appendChild(lab);
+  var x = document.createElement('button');
+  x.type = 'button'; x.className = 'mm-x'; x.textContent = '×';
+  x.title = date ? (date + ' 메모 지우기') : '기존 메모 지우기';
+  x.setAttribute('aria-label', x.title);
+  x.onclick = function () { mmClear(card); };
+  head.appendChild(x);
+  card.appendChild(head);
+  var ta = document.createElement('textarea');
+  ta.className = 'mm-ta'; ta.rows = 2; ta.spellcheck = false;
+  ta.value = body || '';
+  ta.placeholder = date ? '이 날짜의 매물·상담 내용' : '날짜 없이 적어 둔 메모';
+  ta.addEventListener('input', function () { mmGrow(ta); onEditorChanged(); });
+  card.appendChild(ta);
+  return card;
+}
+function renderMemo(txt) {
+  var data = parseMemo(txt), today = todayStamp(), hasToday = false;
+  mmWrap.innerHTML = '';
+  if (data.legacy) mmWrap.appendChild(mmCard('', data.legacy, false));
+  data.days.forEach(function (d) {
+    if (d.date === today) hasToday = true;
+    mmWrap.appendChild(mmCard(d.date, d.body, d.date === today));
+  });
+  /* 오늘 칸은 늘 맨 아래에 비어(또는 이어 쓸 수 있게) 준비해 둔다 */
+  if (!hasToday) mmWrap.appendChild(mmCard(today, '', true));
+  mmTextareas().forEach(mmGrow);
+  mmSetRO(!!RO);
+}
+function mmClear(card) {
+  if (RO) return;
+  var ta = card.querySelector('textarea'); if (!ta) return;
+  var d = card.getAttribute('data-date');
+  if (ta.value.trim() && !confirm((d ? d + ' 메모를' : '기존 메모를') + ' 지울까요?')) return;
+  /* 오늘 칸은 늘 남기고 내용만 지운다 */
+  if (d === todayStamp()) { ta.value = ''; mmGrow(ta); onEditorChanged(); return; }
+  card.remove(); onEditorChanged();
+}
+function mmSetRO(ro) {
+  mmTextareas().forEach(function (ta) {
+    ta.readOnly = !!ro;
+    if (ro) ta.setAttribute('tabindex', '-1'); else ta.removeAttribute('tabindex');
+  });
+}
+/* 오늘 칸으로 커서를 옮긴다(새 메모를 바로 적게) */
+function mmFocusToday() {
+  var t = mmWrap.querySelector('.mm-card[data-date="' + todayStamp() + '"] textarea') || mmTextareas().pop();
+  if (!t) return;
+  try {
+    t.focus({ preventScroll: true });
+    var n = t.value.length;
+    t.setSelectionRange(n, n);
+  } catch (e) {}
+  if (mmWrap.scrollHeight > mmWrap.clientHeight + 4) mmWrap.scrollTop = mmWrap.scrollHeight;
 }
 function saveNote() {
   if (!cur || RO) return false;
-  var out = withDateHeader(curOrigMemo, mcMemo.value);
-  if (out !== mcMemo.value) mcMemo.value = out;
   if (!curDirty()) { flashSaved('저장됨'); return true; }
   writeNote(true);
-  curOrigMemo = mcMemo.value;
   curBase = curSig();
   flashSaved('저장됨');
   scheduleFlush(120);
@@ -1439,7 +1561,7 @@ function writeNote(force) {
   if (!cur || RO) return;
   var sig = curSig();
   if (!force && sig === curBase) return;
-  var txt = mcMemo.value, fld = readFields();
+  var txt = memoText(), fld = readFields();
   var n = S.notes[cur] || { ss: [] }, ss = statesFromNote(n);
   n.memo = txt;
   FIELDS.forEach(function (f) { n[f] = fld[f] || ''; });
@@ -1497,7 +1619,6 @@ function onEditorChanged() {
   mcSaved.textContent = '저장 버튼을 누르세요';
   mcSaved.classList.add('on');
 }
-mcMemo.addEventListener('input', onEditorChanged);
 FIELDS.forEach(function (f) {
   mcIn[f].addEventListener('input', onEditorChanged);
 });
@@ -1557,10 +1678,10 @@ $('mc-del').onclick = function () {
   if (!cur || RO) return;
   if (!confirm('이 호실의 메모·금액·연락처·색상을 모두 지울까요?')) return;
   delete S.notes[cur];
-  mcMemo.value = ''; FIELDS.forEach(function (f) { mcIn[f].value = ''; });
+  renderMemo(''); FIELDS.forEach(function (f) { mcIn[f].value = ''; });
   renderExtPhones([]);
   priceInputs().forEach(function (el) { el.value = ''; });
-  curOrigMemo = ''; curBase = curSig();
+  curBase = curSig();
   paintCell(cur); setStatusUI('none'); setUrgUI(false); setOpUI(false); updateCounts(); markDirty(cur);
   flashSaved('삭제됨');
 };

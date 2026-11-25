@@ -8,7 +8,7 @@
 <title>매물콕 · 공인중개사 전용 매물장</title>
 <link rel="icon" type="image/png" href="favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="app.css?v=22">
+<link rel="stylesheet" href="app.css?v=23">
 </head>
 <body>
 
@@ -353,8 +353,12 @@
       <input id="mc-price-in" type="text" placeholder="예: 2억 5,000" autocomplete="off"></label>
     <label class="mc-fi wide" id="mc-row-jeonse" hidden><span>전세 보증금</span>
       <input id="mc-price-jeonse" type="text" placeholder="예: 1억 8,000 / 0" autocomplete="off"></label>
-    <label class="mc-fi wide" id="mc-row-wolse" hidden><span>월세 보증금·월세</span>
-      <input id="mc-price-wolse" type="text" placeholder="예: 5,000 / 120" autocomplete="off"></label>
+    <div class="mc-fi wide" id="mc-row-wolse" hidden><span>월세 보증금 · 월세</span>
+      <div class="mc-w2in">
+        <label class="mc-w2f"><i>보증금</i><input id="mc-wolse-dep" type="text" inputmode="numeric" placeholder="예: 5,000" autocomplete="off"></label>
+        <label class="mc-w2f"><i>월세</i><input id="mc-wolse-mon" type="text" inputmode="numeric" placeholder="예: 120" autocomplete="off"></label>
+      </div>
+    </div>
     <label class="mc-fi"><span id="mc-lb-owner">소유주</span>
       <input id="mc-owner" type="text" placeholder="예: 홍길동" autocomplete="off"></label>
     <div class="mc-fi mc-ph" id="mc-fi-phone"><span id="mc-lb-phone">연락처</span>
@@ -370,7 +374,7 @@
       <input id="mc-end" type="date" autocomplete="off"></label>
   </div>
   <div class="mc-cap">기타 메모</div>
-  <textarea id="mc-memo" rows="6" placeholder="매물 정보·상담 내용·고객 반응을 적고 아래 저장을 눌러주세요.&#10;저장할 때마다 오늘 날짜가 앞에 붙어 날짜별로 쌓입니다."></textarea>
+  <div class="mc-memos" id="mc-memos"></div>
   <div class="mc-foot">
     <span class="saved" id="mc-saved">저장됨</span>
     <button class="mc-save" id="mc-save">저장</button>
@@ -407,7 +411,7 @@
     <li><b>상태 버튼</b> — 매매·전세·월세·보류·완료·급매·메모있음을 누르면 그 상태만 진하게 남습니다. <b>같은 버튼을 한 번 더</b> 누르면 <b>전체</b>로 돌아옵니다.</li>
     <li><b>목록</b> — 상단 <b>📋 목록</b>을 누르면 지금 검색·필터에 맞는 매물이 <b>글자 목록</b>(동·호수·상태·급매·타부동산·금액·소유주·연락처·메모)으로 나옵니다. 줄을 누르면 그 호실 메모장이 바로 열립니다.</li>
     <li><b>연락처 여러 개</b> — 소유주(임대인) 연락처 아래 <b>+ 연락처 추가</b>를 누르면 두 명 이상을 적을 수 있습니다.</li>
-    <li><b>메모 저장</b> — 메모장에서 고친 내용은 <b>저장</b>을 눌러야 저장됩니다(상태·급매·타부동산은 누르는 즉시). 저장할 때마다 오늘 날짜 <b>[2026.11.25]</b>가 붙어 <b>날짜별로 쌓입니다</b>.</li>
+    <li><b>메모 저장</b> — 기타 메모는 <b>날짜마다 칸</b>이 나뉘어 있습니다. 맨 아래 <b>오늘 날짜 칸</b>에 적고 <b>저장</b>을 누르면 그 날짜 칸에 그대로 남습니다(상태·급매·타부동산은 누르는 즉시 저장). 지난 날짜 칸은 그대로 두고 이어서 볼 수 있고, <b>×</b>로 그 날짜 메모를 비울 수 있습니다.</li>
     <li><b>내 정보</b> — 상호명(사무소명)과 비밀번호를 바꾸고, 비밀번호를 잊었을 때 받을 이메일을 등록합니다.</li>
     <li><b>피클(AI) 연동</b> — <b>내 정보</b>의 <b>피클 연동 안내 복사</b>를 눌러 쓰고 계신 AI에게 붙여 넣으면, AI가 이 매물장을 조회하고 등록할 수 있습니다.</li>
     <li><b>단축키</b> — <b>F</b> 맞춤 · <b>0</b> 100% · <b>+ / −</b> 확대·축소 · <b>/</b> 검색 · <b>Esc</b> 닫기. 메모장과 안내창은 오른쪽 위 <b>×</b>로도 닫힙니다.</li>
@@ -552,6 +556,6 @@
 <script src="board-data.js?v=1"></script>
 <script src="ipark-data.js?v=2"></script>
 <script src="zenith-data.js?v=1"></script>
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

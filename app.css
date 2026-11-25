@@ -443,7 +443,34 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-fi:focus-within{background:#fff; border-color:#94a3b8; box-shadow:0 0 0 2px rgba(148,163,184,.14)}
 .mc-fi.ten{display:none}
 .mc-fields.rental .mc-fi.ten{display:flex}
-.mc-cap{font-size:9px; font-weight:800; color:#94a3b8; margin:0 0 2px 1px; letter-spacing:-.2px}
+.mc-cap{font-size:9px; font-weight:800; color:#94a3b8; margin:0 0 3px 1px; letter-spacing:-.2px}
+/* 월세 — 보증금·월세 두 칸 */
+.mc-w2in{display:grid; grid-template-columns:1fr 1fr; gap:5px}
+.mc-w2f{display:flex; flex-direction:column; min-width:0; border-radius:6px}
+.mc-w2f i{font-style:normal; font-size:8.5px; font-weight:800; color:#a9b4c0; letter-spacing:-.2px; line-height:1.3}
+.mc-w2f input{border:0; background:transparent; outline:none; padding:0; width:100%; min-width:0; font-size:12.5px;
+              font-weight:700; color:var(--ink); letter-spacing:-.2px}
+.mc-w2f input::placeholder{font-weight:500; color:#cbd5e1}
+.mc-w2f:focus-within i{color:#64748b}
+/* 기타 메모 — 날짜마다 칸을 나눈다 */
+.mc-memos{display:flex; flex-direction:column; gap:6px; max-height:42vh; overflow:auto; padding:1px 2px 1px 1px;
+          overscroll-behavior:contain}
+.mm-card{background:#f8fafc; border:1px solid #eef1f5; border-radius:9px; padding:4px 8px 5px}
+.mm-card:focus-within{background:#fff; border-color:#cbd5e1; box-shadow:0 0 0 2px rgba(148,163,184,.12)}
+.mm-head{display:flex; align-items:center; gap:5px; margin:0 0 2px}
+.mm-date{font-size:10px; font-weight:800; color:#475569; letter-spacing:-.2px}
+.mm-od .mm-date{color:#8b96a3; font-weight:700}
+.mm-now{font-style:normal; font-size:8.5px; font-weight:800; color:#1d4ed8; background:#e8efff;
+        border-radius:4px; padding:0 4px; line-height:1.5}
+.mm-x{margin-left:auto; flex:0 0 auto; width:17px; height:17px; padding:0; border:0; border-radius:5px;
+      background:#eef2f6; color:#94a3b8; font-size:12px; line-height:1; font-weight:800; cursor:pointer;
+      display:flex; align-items:center; justify-content:center}
+.mm-x:hover{background:#fee2e2; color:#b91c1c}
+.mm-ta{display:block; width:100%; min-height:40px; max-height:30vh; resize:none; border:0; background:transparent;
+       outline:none; padding:0; font-size:12.5px; line-height:1.55; font-family:inherit; color:var(--ink)}
+.mm-ta::placeholder{font-weight:500; color:#c3ccd6}
+.mc.ro .mm-x{display:none}
+.mc.ro .mm-card{background:#f8fafc}
 .mc-urgrow{display:flex; gap:4px; margin:-2px 0 6px; flex-wrap:wrap}
 .mc-op{border:1px solid #c9e7dc; background:#fff; color:#0f766e; border-radius:7px; padding:3px 9px; font-size:10.5px;
        font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:4px}
@@ -457,9 +484,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-urg i{font-style:normal; font-weight:800}
 .mc-urg:hover{background:#fff5f5}
 .mc-urg[data-on="1"]{background:#fee2e2; border-color:#fca5a5; color:#991b1b}
-.mc textarea{width:100%; min-height:140px; max-height:40vh; resize:vertical; border:1px solid #e2e6ea; border-radius:8px;
-             padding:7px 8px; font-size:12.5px; line-height:1.6; font-family:inherit; outline:none; background:#fff; color:var(--ink)}
-.mc textarea:focus{border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.15)}
+.mc .mm-ta{max-height:30vh}
 .mc-foot{display:flex; align-items:center; gap:6px; margin-top:7px; min-height:24px}
 .mc-del{margin-left:0; border:1px solid #f0d4d4; background:#fff; color:#b91c1c; border-radius:7px; padding:4px 9px;
         font-size:11px; font-weight:700; cursor:pointer}
@@ -627,9 +652,16 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   .mc-fi{padding:4px 8px}
   .mc-fi input{font-size:13px}
   .mc-cap{font-size:9.5px}
+  .mc-w2f i{font-size:9px}
+  .mc-w2f input{font-size:13px}
+  .mc-memos{max-height:38vh; gap:7px}
+  .mm-card{padding:5px 9px 6px}
+  .mm-ta{min-height:44px; font-size:14px; letter-spacing:-.2px}
+  .mm-date{font-size:11px}
+  .mm-x{width:20px; height:20px; font-size:13px}
   .mc-urg{padding:5px 11px; font-size:11.5px; border-radius:8px}
   .mc-op{padding:5px 11px; font-size:11.5px; border-radius:8px}
-  .mc textarea{min-height:104px; font-size:13px; padding:8px 9px; border-radius:9px}
+  .mc .mm-ta{max-height:26vh}
   .mc-del{padding:8px 11px; font-size:12px; border-radius:9px}
   /* 저장 버튼은 시트를 내려도 항상 손에 잡히게 바닥에 붙인다 */
   .mc-foot{position:sticky; bottom:0; background:#fff; padding:6px 0 2px; margin-top:6px;
