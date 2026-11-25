@@ -134,6 +134,11 @@ function esc(s) {
   });
 }
 function str(v) { return v == null ? '' : String(v).trim(); }
+/* 빈 값을 '' 로 박아 둔 행(다른 프로그램으로 넣은 자료)은 빈 칸으로 본다 */
+function phStr(v) {
+  var s = str(v);
+  return (s === "''" || s === '\"\"') ? '' : s;
+}
 function cleanState(s) {
   return (s === 'sale' || s === 'jeonse' || s === 'wolse' || s === 'done') ? s : 'none';
 }
@@ -465,9 +470,9 @@ function rowToNote(r) {
     price: primaryPrice({ ss: ss, ps: out }),
     owner: str(r.owner_name),
     tenant: str(r.tenant_name),
-    tphone: str(r.tenant_phone),
+    tphone: phStr(r.tenant_phone),
     end: str(r.lease_end_date).slice(0, 10),
-    phone: str(r.phone),
+    phone: phStr(r.phone),
     memo: str(r.memo),
     urgent: r.urgent ? 1 : 0,
     op: r.other_prop ? 1 : 0,
@@ -2703,12 +2708,16 @@ function pickleGuide() {
   L.push('SUPABASE_ANON_KEY = ' + anon);
   L.push('');
   L.push('1) 로그인');
-  L.push('POST ' + sb + '/auth/v1/token?grant_type=password');
-  L.push('headers: apikey: ' + anon + ' / Content-Type: application/json');
-  L.push('body: {"email":"<로그인 이메일>","password":"<비밀번호>"}');
-  L.push('· 아이디에 @가 있으면 그대로 email로 넣습니다.');
-  L.push('· 한글·영문 상호 아이디는 내부 주소로 바꿔 넣습니다: u_<아이디의 UTF-8 바이트 16진수>@id.centumleel.local');
-  L.push('  예) 골드 → u_eab3a8eb939c@id.centumleel.local');
+  L.push('· 아이디에 @가 들어 있으면 그 주소가 곱 로그인 이메일입니다.');
+  L.push('· 한글·영문 상호 아이디는 먼저 물어봅니다:');
+  L.push('  POST ' + sb + '/rest/v1/rpc/lookup_login_email');
+  L.push('  headers: apikey: ' + anon + ' / Content-Type: application/json');
+  L.push('  body: {"p":"<아이디>"}   → "로그인 이메일" 문자열이 옵니다.');
+  L.push('  (예전에 만든 계정은 u_…@id.centumleel.local 처럼 내부 주소가 오는데 그대로 쓰면 됩니다.)');
+  L.push('· 로그인');
+  L.push('  POST ' + sb + '/auth/v1/token?grant_type=password');
+  L.push('  headers: apikey: ' + anon + ' / Content-Type: application/json');
+  L.push('  body: {"email":"<로그인 이메일>","password":"<비밀번호>"}');
   L.push('→ 받은 access_token을 아래 요청의 Authorization: Bearer <토큰> 에 넣습니다. apikey는 그대로 둡니다.');
   L.push('');
   L.push('2) 내 user_id');
