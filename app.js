@@ -1127,6 +1127,12 @@ function phoneAll() {
   var arr = [mcIn.phone.value.trim()].concat(extPhoneList());
   return arr.filter(function (v) { return !!v; }).join(', ');
 }
+/* 저장 여부를 가릴 때 쓰는 지문 — 빈 칸을 하나 더 눌러도 ‘바뀜’으로 보지 않는다 */
+function phoneSig() {
+  var arr = [mcIn.phone.value.trim()].concat(extPhoneList());
+  while (arr.length > 1 && !arr[arr.length - 1]) arr.pop();
+  return arr.join('|');
+}
 function splitPhones(v) {
   return String(v == null ? '' : v).split(/\s*,\s*/).map(function (s) { return s.trim(); })
     .filter(function (s) { return !!s; });
@@ -1158,8 +1164,8 @@ function renderExtPhones(list) {
 }
 
 function curSig() {
-  var o = { memo: mcMemo.value, ext: extPhoneList().join('|') };
-  FIELDS.forEach(function (f) { o[f] = (f === 'phone') ? mcIn.phone.value.trim() : mcIn[f].value; });
+  var o = { memo: mcMemo.value, ph: phoneSig() };
+  FIELDS.forEach(function (f) { if (f !== 'phone') o[f] = mcIn[f].value; });
   priceInputs().forEach(function (el, i) { o['p' + i] = el.value; });
   return JSON.stringify(o);
 }
@@ -2708,7 +2714,7 @@ function pickleGuide() {
   L.push('SUPABASE_ANON_KEY = ' + anon);
   L.push('');
   L.push('1) 로그인');
-  L.push('· 아이디에 @가 들어 있으면 그 주소가 곱 로그인 이메일입니다.');
+  L.push('· 아이디에 @가 들어 있으면 그 주소가 곧 로그인 이메일입니다.');
   L.push('· 한글·영문 상호 아이디는 먼저 물어봅니다:');
   L.push('  POST ' + sb + '/rest/v1/rpc/lookup_login_email');
   L.push('  headers: apikey: ' + anon + ' / Content-Type: application/json');
