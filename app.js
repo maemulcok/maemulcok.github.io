@@ -1903,6 +1903,19 @@ function clearMetrics() {
   ['--rh', '--fnum', '--ffloor', '--fsum', '--fh', '--rhd', '--fx', '--colw', '--gap']
     .forEach(function (p) { boardEl.style.removeProperty(p); });
 }
+/* 맞춤 배율 상한
+   세대수가 많은 단지(센텀르엘 2,070 · 아이파크 1,631 · 제니스 1,788)는 늘 하던 그대로
+   114%까지만 키운다. 반대로 아델리스(510세대·47층)처럼 층이 적어 표가 화면 위쪽만
+   차지하고 아래가 비던 단지는 상한을 올려 화면 끝까지 채운다.
+   (새 소규모 단지도 세대수 1,000 미만이거나 최고 55층 이하면 자동 적용) */
+var FIT_CAP_BIG = 1.14, FIT_CAP_SMALL = 2.2;
+function isSmallBoard() {
+  var units = (BOARD && BOARD.meta && BOARD.meta.units) || 0;
+  if (units && units < 1000) return true;
+  var top = 0;
+  DONGS.forEach(function (d) { top = Math.max(top, (DONG_META[d] && DONG_META[d].top) || 0); });
+  return top > 0 && top <= 55;
+}
 function computeFit() {
   applyMetrics(1);
   void boardEl.offsetHeight;
@@ -1914,7 +1927,7 @@ function computeFit() {
   var needW = (CX.id === 'zenith' ? (NCOLS * 21 + 30) : 138) * DONGS.length + 5 * Math.max(0, DONGS.length - 1), availW = window.innerWidth - 24;
   if (needW > availW) s = Math.min(s, availW / needW);
   s = Math.floor(s * 1000) / 1000;
-  return Math.max(0.45, Math.min(1.14, s));
+  return Math.max(0.45, Math.min(isSmallBoard() ? FIT_CAP_SMALL : FIT_CAP_BIG, s));
 }
 function applyZoom() {
   if (!S.ready) return;
