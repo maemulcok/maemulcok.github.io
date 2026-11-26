@@ -433,7 +433,7 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-stat button[data-s="done"].on{background:var(--done); border-color:#e88}
 .mc-fields{display:grid; grid-template-columns:1fr 1fr; gap:4px; margin:1px 0 6px; align-items:start}
 .mc-fi{display:flex; flex-direction:column; gap:1px; min-width:0; background:#f8fafc; border:1px solid #eef1f5;
-       border-radius:7px; padding:3px 7px}
+       border-radius:7px; padding:3px 7px; align-self:start}
 .mc-fi.wide{grid-column:1 / -1}
 .mc-fi span{font-size:9px; font-weight:800; color:#94a3b8; letter-spacing:-.2px; white-space:nowrap;
             overflow:hidden; text-overflow:ellipsis}
@@ -444,14 +444,30 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 .mc-fi.ten{display:none}
 .mc-fields.rental .mc-fi.ten{display:flex}
 .mc-cap{font-size:9px; font-weight:800; color:#94a3b8; margin:0 0 3px 1px; letter-spacing:-.2px}
-/* 월세 — 보증금·월세 두 칸 */
-.mc-w2in{display:grid; grid-template-columns:1fr 1fr; gap:5px}
-.mc-w2f{display:flex; flex-direction:column; min-width:0; border-radius:6px}
-.mc-w2f i{font-style:normal; font-size:8.5px; font-weight:800; color:#a9b4c0; letter-spacing:-.2px; line-height:1.3}
-.mc-w2f input{border:0; background:transparent; outline:none; padding:0; width:100%; min-width:0; font-size:12.5px;
-              font-weight:700; color:var(--ink); letter-spacing:-.2px}
-.mc-w2f input::placeholder{font-weight:500; color:#cbd5e1}
-.mc-w2f:focus-within i{color:#64748b}
+/* 금액 칸 — 매매·전세·월세를 같은 짙은 테두리로 감싼다 (2026-11-26)
+   사유가 몇 개든 테두리 색은 #334155 한 가지로 통일하고, 왼쪽 작은 점만 사유 색을 띤다. */
+.mc-amt{grid-column:1 / -1; min-width:0; background:#fff; border:1.5px solid #334155; border-radius:9px;
+        padding:2px 8px 3px; margin:0 0 1px; transition:box-shadow .12s}
+.mc-amt[hidden]{display:none}
+.mc-amt:focus-within{box-shadow:0 0 0 2px rgba(51,65,85,.13)}
+.mc-amt-h{display:flex; align-items:center; gap:5px; margin:0 0 2px; min-width:0}
+.mc-amt-h span{font-size:9.5px; font-weight:800; color:#334155; letter-spacing:-.2px;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mc-amt-h .mc-u{margin-left:auto; flex:0 0 auto; font-style:normal; font-size:8.5px; font-weight:800;
+                color:#475569; background:#eef2f6; border-radius:4px; padding:0 4px; line-height:1.5}
+.mc-dot{flex:0 0 auto; width:6px; height:6px; border-radius:2px; border:1px solid rgba(15,23,42,.14)}
+.mc-dot.s{background:#FEF08A; border-color:#d9b421}
+.mc-dot.j{background:#BAE6FD; border-color:#56b6e0}
+.mc-dot.o{background:#E9D5FF; border-color:#c084fc}
+.mc-amt-grid{display:grid; grid-template-columns:1fr; gap:6px; align-items:end}
+.mc-amt-grid.two{grid-template-columns:1fr 1fr}
+.mc-af{display:flex; flex-direction:column; min-width:0; gap:0}
+.mc-af i{display:none; font-style:normal; font-size:9px; font-weight:800; color:#7c8899; letter-spacing:-.2px; line-height:1.3}
+.mc-amt-grid.sub>.mc-af>i{display:block}
+.mc-af input{border:0; background:transparent; outline:none; padding:0; width:100%; min-width:0;
+             font-size:12.5px; font-weight:700; color:var(--ink); letter-spacing:-.2px}
+.mc-af input::placeholder{font-weight:500; color:#cbd5e1}
+.mc-af:focus-within i{color:#64748b}
 /* 기타 메모 — 날짜마다 칸을 나눈다 */
 .mc-memos{display:flex; flex-direction:column; gap:6px; max-height:42vh; overflow:auto; padding:1px 2px 1px 1px;
           overscroll-behavior:contain}
@@ -497,8 +513,11 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
 /* 소유주·임대인 연락처 여러 개 */
 .mc-ph{gap:2px}
 .mc-exts{display:flex; flex-direction:column; gap:1px}
-.mc-ext{display:flex; align-items:center; gap:2px; margin-top:2px; padding-top:2px; border-top:1px dashed #e2e8f0}
-.mc-ext input{flex:1 1 auto}
+.mc-ext{display:flex; align-items:center; gap:4px; margin-top:2px; padding-top:2px; border-top:1px dashed #e2e8f0}
+.mc-ext input{flex:1 1 auto; min-width:0}
+/* 추가한 행 — 이름과 연락처를 함께 적는다 */
+.mc-ext .mc-extn{flex:0 0 38%; min-width:0; padding-right:5px; border-right:1px solid #e2e8f0}
+.mc-ext .mc-extn::placeholder{font-weight:500; color:#cbd5e1}
 .mc-extx{flex:0 0 auto; width:16px; height:16px; padding:0; border:0; border-radius:5px; background:#f1f5f9; color:#64748b;
          font-size:12px; line-height:1; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center}
 .mc-extx:hover{background:#fee2e2; color:#b91c1c}
@@ -652,8 +671,14 @@ tr.typerow td .b244{display:inline-block; font-style:normal; margin-left:1px; fo
   .mc-fi{padding:4px 8px}
   .mc-fi input{font-size:13px}
   .mc-cap{font-size:9.5px}
-  .mc-w2f i{font-size:9px}
-  .mc-w2f input{font-size:13px}
+  .mc-amt{padding:4px 9px 5px}
+  .mc-amt-h span{font-size:10px}
+  .mc-af i{font-size:9px}
+  .mc-af input{font-size:13px}
+  /* 좁은 화면 — 추가한 연락처는 이름을 위, 연락처를 아래에 두어 번호가 잘리지 않게 */
+  .mc-ext{flex-wrap:wrap; row-gap:1px}
+  .mc-ext .mc-extn{flex:1 1 100%; padding-right:0; border-right:0; border-bottom:1px dashed #e2e8f0}
+  .mc-ext .mc-extp{flex:1 1 0; min-width:0}
   .mc-memos{max-height:38vh; gap:7px}
   .mm-card{padding:5px 9px 6px}
   .mm-ta{min-height:44px; font-size:14px; letter-spacing:-.2px}

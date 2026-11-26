@@ -14,7 +14,7 @@ var CX_LIST = [];
 (function () {
   if (window.CENTUM_BOARD) {
     CX_LIST.push({
-      id: 'centum', name: '센텀르엘', sub: '101~106동 · 2,070세대',
+      id: 'centum', name: '센텀르엘(분양권)', sub: '101~106동 · 2,070세대',
       desc: '르엘 리버파크 센텀', board: window.CENTUM_BOARD, cols: 6, bottom: 5, fillBlanks: true,
       price: true, dongs: [101, 102, 103, 104, 105, 106]
     });
@@ -104,7 +104,9 @@ var URG_RE = /급내|급매/;
 /* 복수로 함께 고를 수 있는 상태 — 이 순서대로 대각선 색을 나눈다(매매 → 전세 → 월세).
    보류·완료는 단독, 기본은 선택 없음이다. */
 var ST_ORDER = ['sale', 'jeonse', 'wolse'];
-var PRICE_LBL = { sale: '매매가', jeonse: '전세 보증금', wolse: '월세 보증금·월세', etc: '금액' };
+var PRICE_LBL = { sale: '매매가', jeonse: '전세 보증금', wolse: '월세 보증금·월세', etc: '금액', premium: '프리미엄' };
+/* 금액은 모두 '만원' 단위 숫자로 다룬다. DB에는 96,000 처럼 콤마가 붙은 숫자로 남긴다. */
+var PRICE_KEYS = ['sale', 'premium', 'jeonse', 'wolse', 'etc'];
 /* price 는 상태별(ps)로 나눠 담고, 아래 목록은 금액을 뺀 나머지 칸이다 */
 var FIELDS = ['owner', 'tenant', 'phone', 'tphone', 'end'];
 
@@ -134,6 +136,41 @@ function esc(s) {
   });
 }
 function str(v) { return v == null ? '' : String(v).trim(); }
+/* ---------- 금액 — 모두 '만원' 단위 숫자로 다룬다 ---------- */
+function digitsOnly(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''); }
+/* 입력칸에 보이는 모양 — 숫자만 남기고 천 단위 콤마 */
+function fmtMan(v) {
+  var s = str(v);
+  if (!s) return '';
+  var d = digitsOnly(s);
+  if (!d) return s;                 /* 숫자가 전혀 없는 값은 그대로 보여 준다 */
+  d = d.replace(/^0+(?=\d)/, '');
+  return Number(d).toLocaleString('ko-KR');
+}
+/* 옛 금액('30억', '12억 5,000만', '13억7000만', '5,000만', '96000') → 만원 숫자('300000') */
+function parseMan(v) {
+  var s = str(v).replace(/,/g, '').replace(/\s+/g, '');
+  if (!s) return '';
+  if (/^\d+(?:\.\d+)?$/.test(s)) return String(Math.round(parseFloat(s)));
+  var eok = 0, man = 0, rest = s, m;
+  m = rest.match(/^(\d+(?:\.\d+)?)억(.*)$/);
+  if (m) { eok = parseFloat(m[1]); rest = m[2]; }
+  m = rest.match(/^(\d+(?:\.\d+)?)만?/);
+  if (m) man = parseFloat(m[1]);
+  var t = Math.round(eok * 10000 + man);
+  return t ? String(t) : '';
+}
+/* 만원 숫자 → 화면용('9억 6,000만', '3,000만') */
+function amtText(v) {
+  var n = parseMan(v);
+  if (n === '') return str(v);
+  var num = parseInt(n, 10) || 0;
+  if (!num) return '0';
+  var eok = Math.floor(num / 10000), man = num % 10000;
+  if (eok && man) return eok + '억 ' + man.toLocaleString('ko-KR') + '만';
+  if (eok) return eok + '억';
+  return man.toLocaleString('ko-KR') + '만';
+}
 /* 빈 값을 '' 로 박아 둔 행(다른 프로그램으로 넣은 자료)은 빈 칸으로 본다 */
 function phStr(v) {
   var s = str(v);
@@ -179,8 +216,19 @@ function primaryPrice(n) {
 }
 function priceText(ss, ps) {
   var arr = cleanStates(ss), parts = [];
-  arr.forEach(function (s) { var v = str(ps[s]); if (v) parts.push((arr.length > 1 ? PRICE_LBL[s] + ' ' : '') + v); });
-  if (!parts.length && str(ps.etc)) parts.push(str(ps.etc));
+  arr.forEach(function (s) {
+    var v = str(ps[s]); if (!v) return;
+    /* 월세는 '보증금 / 월세' 한 값으로 저장돼 있어 둘을 따로 보여 준다 */
+    if (s === 'wolse') {
+      var w = splitWolse(v), t = [amtText(w.dep), amtText(w.mon)].filter(Boolean).join(' / ');
+      parts.push(PRICE_LBL[s] + ' ' + (t || amtText(v)));
+      return;
+    }
+    parts.push(PRICE_LBL[s] + ' ' + amtText(v));
+  });
+  /* 센텀르엘(분양권) 매매 프리미엄은 매매가와 따로 보여 준다 */
+  if (arr.indexOf('sale') >= 0 && str(ps.premium)) parts.push(PRICE_LBL.premium + ' ' + amtText(ps.premium));
+  if (!parts.length && str(ps.etc)) parts.push(amtText(ps.etc));
   return parts.join(' · ');
 }
 function K(d, h, f) { return d + '-' + h + '-' + f; }
@@ -396,7 +444,7 @@ function hasInfoNote(n) {
   if (!n) return false;
   if (str(n.memo) || str(n.owner) || str(n.tenant) || str(n.phone) || str(n.tphone) || str(n.end) || n.urgent || n.op) return true;
   var ps = pricesOf(n);
-  return !!(str(ps.sale) || str(ps.jeonse) || str(ps.wolse) || str(ps.etc) || str(n.price));
+  return !!(str(ps.sale) || str(ps.premium) || str(ps.jeonse) || str(ps.wolse) || str(ps.etc) || str(n.price));
 }
 function hasInfo(k) {
   return hasInfoNote(S.notes[k]);
@@ -416,7 +464,7 @@ function fieldText(k) {
   var n = S.notes[k]; if (!n) return '';
   var ss = statesFromNote(n), rental = (ss.indexOf('jeonse') >= 0 || ss.indexOf('wolse') >= 0), parts = [];
   var ps = pricesOf(n), pt = priceText(ss, ps);
-  if (pt) parts.push(ss.length === 1 && ss[0] === 'sale' ? '매매가 P ' + pt : pt);
+  if (pt) parts.push(pt);
   if (str(n.owner)) parts.push((rental ? '임대인 ' : '소유주 ') + str(n.owner));
   if (str(n.phone)) parts.push((rental ? '임대인 연락처 ' : '연락처 ') + str(n.phone));
   if (str(n.tenant)) parts.push('임차인 ' + str(n.tenant));
@@ -431,7 +479,7 @@ function fieldText(k) {
    ============================================================ */
 function noteToRow(k, n) {
   var cx = cxByKey(k), ss = statesFromNote(n), ps = pricesOf(n), prices = {}, any = false;
-  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) {
+  PRICE_KEYS.forEach(function (p) {
     var v = str(ps[p]); if (v) { prices[p] = v; any = true; }
   });
   return {
@@ -461,7 +509,7 @@ function rowStates(r) {
 }
 function rowToNote(r) {
   var ss = rowStates(r), ps = (r.prices && typeof r.prices === 'object') ? r.prices : {}, out = {};
-  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { if (str(ps[p])) out[p] = str(ps[p]); });
+  PRICE_KEYS.forEach(function (p) { if (str(ps[p])) out[p] = str(ps[p]); });
   if (!Object.keys(out).length && str(r.price)) out[priceKeyOf(ss.length ? ss[0] : cleanState(r.status))] = str(r.price);
   return {
     s: ss.length ? ss[0] : 'none',
@@ -1108,11 +1156,11 @@ var mcHo = $('mc-ho'), mcType = $('mc-type'), mcPrice = $('mc-price'), mcGy = $(
 var mcOp = $('mc-op');
 var mcIn = { owner: $('mc-owner'), phone: $('mc-phone'), tenant: $('mc-tenant'), tphone: $('mc-tphone'), end: $('mc-end') };
 /* 금액 칸 — 상태별로 따로 적는다. mc-price-in 은 매매가이자, 상태가 없을 때의 '금액' 칸이다 */
-var mcP = { sale: $('mc-price-in'), jeonse: $('mc-price-jeonse') };
+var mcP = { sale: $('mc-price-in'), premium: $('mc-price-premium'), jeonse: $('mc-price-jeonse') };
 /* 월세 — 보증금과 월세를 두 칸으로 나누어 적는다 */
 var mcW = { dep: $('mc-wolse-dep'), mon: $('mc-wolse-mon') };
 var mcPRows = { sale: $('mc-row-sale'), jeonse: $('mc-row-jeonse'), wolse: $('mc-row-wolse') };
-function priceInputs() { return [mcP.sale, mcP.jeonse, mcW.dep, mcW.mon]; }
+function priceInputs() { return [mcP.sale, mcP.premium, mcP.jeonse, mcW.dep, mcW.mon]; }
 /* DB에는 예전처럼 "보증금 / 월세" 한 문자열로 남긴다(기존 매물·검색·백업과 그대로 호환). */
 function wolseVal() {
   var d = str(mcW.dep.value), m = str(mcW.mon.value);
@@ -1132,33 +1180,52 @@ var cur = null, curTd = null, selTd = null, curBase = '', saveT = null, justOpen
 /* ---------- 소유주 연락처 여러 개 ----------
    화면은 입력칸을 여러 개로 나누지만, 저장은 예전처럼 owner_phone 한 칸에
    '010-1111-1111, 010-2222-2222' 처럼 ', '로 이어서 넣는다(DB 스키마 그대로). */
-function extInputs() {
-  return Array.prototype.slice.call(document.querySelectorAll('#mc-ext-phone input'));
-}
+function extRows() { return Array.prototype.slice.call(document.querySelectorAll('#mc-ext-phone .mc-ext')); }
+function extInputs() { return extRows().map(function (r) { return r.querySelector('.mc-extp'); }); }
+function extNameInputs() { return extRows().map(function (r) { return r.querySelector('.mc-extn'); }); }
 function extPhoneList() {
   return extInputs().map(function (i) { return i.value.trim(); });
+}
+function extNameList() {
+  return extNameInputs().map(function (i) { return i.value.trim(); });
 }
 function phoneAll() {
   var arr = [mcIn.phone.value.trim()].concat(extPhoneList());
   return arr.filter(function (v) { return !!v; }).join(', ');
 }
+/* 이름도 예전처럼 owner_name 한 칸에 ', '로 이어 저장한다 */
+function ownerAll() {
+  var arr = [mcIn.owner.value.trim()].concat(extNameList());
+  return arr.filter(function (v) { return !!v; }).join(', ');
+}
 /* 저장 여부를 가릴 때 쓰는 지문 — 빈 칸을 하나 더 눌러도 ‘바뀜’으로 보지 않는다 */
-function phoneSig() {
-  var arr = [mcIn.phone.value.trim()].concat(extPhoneList());
-  while (arr.length > 1 && !arr[arr.length - 1]) arr.pop();
-  return arr.join('|');
+function contactSig() {
+  var names = [mcIn.owner.value.trim()].concat(extNameList());
+  var phones = [mcIn.phone.value.trim()].concat(extPhoneList());
+  while (names.length > 1 && !names[names.length - 1]) names.pop();
+  while (phones.length > 1 && !phones[phones.length - 1]) phones.pop();
+  return names.join('|') + '‖' + phones.join('|');
 }
 function splitPhones(v) {
   return String(v == null ? '' : v).split(/\s*,\s*/).map(function (s) { return s.trim(); })
     .filter(function (s) { return !!s; });
 }
-function addPhoneRow(val) {
+/* 이름은 ', ' 말고 '/'·'·'로 이어 적힌 옛 자료도 한 사람씩 나눈다 */
+function splitNames(v) {
+  return String(v == null ? '' : v).split(/\s*[,/·]\s*/).map(function (s) { return s.trim(); })
+    .filter(function (s) { return !!s; });
+}
+/* 추가한 행 — 이름과 연락처를 함께 적는다 */
+function addPhoneRow(val, name) {
   var row = document.createElement('div');
   row.className = 'mc-ext';
-  row.innerHTML = '<input type="tel" inputmode="tel" placeholder="010-0000-0000" autocomplete="off">'
+  row.innerHTML = '<input type="text" class="mc-extn" placeholder="이름" autocomplete="off">'
+    + '<input type="tel" class="mc-extp" inputmode="tel" placeholder="010-0000-0000" autocomplete="off">'
     + '<button type="button" class="mc-extx" aria-label="이 연락처 지우기" title="이 연락처 지우기">×</button>';
-  var inp = row.querySelector('input');
+  var nin = row.querySelector('.mc-extn'), inp = row.querySelector('.mc-extp');
+  if (name) nin.value = name;
   if (val) inp.value = fmtPhone(val);
+  nin.addEventListener('input', function () { onEditorChanged(); });
   inp.addEventListener('input', function () {
     if (RO) return;
     var v = fmtPhone(inp.value);
@@ -1171,16 +1238,17 @@ function addPhoneRow(val) {
     row.remove(); onEditorChanged();
   };
   $('mc-ext-phone').appendChild(row);
-  return inp;
+  return nin;
 }
-function renderExtPhones(list) {
+function renderExtPhones(list, names) {
   $('mc-ext-phone').innerHTML = '';
-  (list || []).forEach(function (v) { addPhoneRow(v); });
+  var ph = list || [], nm = names || [], len = Math.max(ph.length, nm.length);
+  for (var i = 0; i < len; i++) addPhoneRow(ph[i] || '', nm[i] || '');
 }
 
 function curSig() {
-  var o = { memo: memoText(), ph: phoneSig() };
-  FIELDS.forEach(function (f) { if (f !== 'phone') o[f] = mcIn[f].value; });
+  var o = { memo: memoText(), ct: contactSig() };
+  FIELDS.forEach(function (f) { if (f !== 'phone' && f !== 'owner') o[f] = mcIn[f].value; });
   priceInputs().forEach(function (el, i) { o['p' + i] = el.value; });
   return JSON.stringify(o);
 }
@@ -1188,9 +1256,10 @@ function curDirty() { return !!cur && curSig() !== curBase; }
 function readFields() {
   var o = {};
   FIELDS.forEach(function (f) {
-    if (f === 'phone') return;
+    if (f === 'phone' || f === 'owner') return;
     var v = mcIn[f].value.trim(); if (v) o[f] = v;
   });
+  var ow = ownerAll(); if (ow) o.owner = ow;
   var ph = phoneAll();
   if (ph) o.phone = ph;
   return o;
@@ -1202,8 +1271,11 @@ function isGenericState(ss) {
 /* 지금 고른 상태의 금액 칸만 읽는다 — 숨은 상태의 금액은 적지 않은 것으로 친다 */
 function readPrices(ss) {
   var o = {}, arr = cleanStates(ss);
-  if (arr.indexOf('sale') >= 0) o.sale = mcP.sale.value.trim();
-  else if (isGenericState(arr)) o.etc = mcP.sale.value.trim();
+  if (arr.indexOf('sale') >= 0) {
+    o.sale = mcP.sale.value.trim();
+    /* 분양권 단지에서만 프리미엄을 따로 적는다 */
+    if (CX.id === 'centum') o.premium = mcP.premium.value.trim();
+  } else if (isGenericState(arr)) o.etc = mcP.sale.value.trim();
   if (arr.indexOf('jeonse') >= 0) o.jeonse = mcP.jeonse.value.trim();
   if (arr.indexOf('wolse') >= 0) o.wolse = wolseVal();
   return o;
@@ -1212,7 +1284,7 @@ function readPrices(ss) {
    잠시 해제한 상태의 금액은 지우지 않는다(다시 고르면 그대로 살아난다). */
 function applyPrices(n, ss) {
   var ps = pricesOf(n), kept = {}, got = readPrices(ss);
-  ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { var v = str(ps[p]); if (v) kept[p] = v; });
+  PRICE_KEYS.forEach(function (p) { var v = str(ps[p]); if (v) kept[p] = v; });
   Object.keys(got).forEach(function (p) { if (got[p]) kept[p] = got[p]; else delete kept[p]; });
   n.ps = kept;
   n.price = primaryPrice(n);
@@ -1224,13 +1296,23 @@ function fillEditor(k) {
     var v = str(n[f]);
     mcIn[f].value = (f === 'tphone') ? fmtPhone(v) : v;
   });
-  var ph = splitPhones(n.phone);
+  /* 이름·연락처는 순서대로 짝을 맞춘다 (첫 사람은 기본 칸, 나머지는 추가 행) */
+  var nm = splitNames(n.owner), ph = splitPhones(n.phone);
+  mcIn.owner.value = nm.length ? nm[0] : '';
   mcIn.phone.value = ph.length ? fmtPhone(ph[0]) : '';
-  renderExtPhones(ph.slice(1));
-  mcP.sale.value = ss.indexOf('sale') >= 0 ? str(ps.sale) : (gen ? str(ps.etc) : '');
-  mcP.jeonse.value = str(ps.jeonse);
-  var w = splitWolse(ps.wolse);
-  mcW.dep.value = w.dep; mcW.mon.value = w.mon;
+  renderExtPhones(ph.slice(1), nm.slice(1));
+  /* 옛 금액('2억 5,000')도 만원 숫자('25,000')로 바꿔 보여 준다.
+     ps 없이 price 한 칸에만 적혀 있던 옛 메모도 그 금액으로 불러온다. */
+  var legacy = str(n.price);
+  var saleRaw = ss.indexOf('sale') >= 0 ? str(ps.sale) : (gen ? str(ps.etc) : '');
+  if (!saleRaw && legacy && (ss.indexOf('sale') >= 0 || gen)) saleRaw = legacy;
+  var jeonRaw = str(ps.jeonse) || (ss.indexOf('jeonse') >= 0 && !str(ps.sale) ? legacy : '');
+  var wolseRaw = str(ps.wolse) || (ss.indexOf('wolse') >= 0 && !str(ps.jeonse) ? legacy : '');
+  mcP.sale.value = fmtMan(saleRaw);
+  mcP.premium.value = fmtMan(str(ps.premium));
+  mcP.jeonse.value = fmtMan(jeonRaw);
+  var w = splitWolse(wolseRaw);
+  mcW.dep.value = fmtMan(w.dep); mcW.mon.value = fmtMan(w.mon);
   renderMemo(memoOf(k));
   /* 저장할 때 비교할 직전 저장본 */
   curBase = curSig();
@@ -1259,7 +1341,7 @@ function setStatusUI(ss) {
 function applyROView() {
   var ro = !!RO;
   mc.classList.toggle('ro', ro);
-  FIELDS.map(function (f) { return mcIn[f]; }).concat(priceInputs()).concat(extInputs()).forEach(function (el) {
+  FIELDS.map(function (f) { return mcIn[f]; }).concat(priceInputs()).concat(extInputs()).concat(extNameInputs()).forEach(function (el) {
     el.readOnly = ro;
     if (ro) el.setAttribute('tabindex', '-1'); else el.removeAttribute('tabindex');
   });
@@ -1279,14 +1361,16 @@ function syncFieldUI(ss) {
     jeonse: arr.indexOf('jeonse') >= 0,
     wolse: arr.indexOf('wolse') >= 0
   };
-  var shown = (show.sale ? 1 : 0) + (show.jeonse ? 1 : 0) + (show.wolse ? 1 : 0);
-  Object.keys(mcPRows).forEach(function (p) {
-    mcPRows[p].hidden = !show[p];
-    /* 한 칸뿐이면 넓게, 두세 칸이면 한 줄에 나란히 */
-    mcPRows[p].classList.toggle('wide', shown <= 1);
-  });
+  Object.keys(mcPRows).forEach(function (p) { mcPRows[p].hidden = !show[p]; });
   mcFields.classList.toggle('rental', rental);
-  $('mc-lb-price').textContent = show.sale ? (gen ? '금액' : '매매가 · P') : '금액';
+  /* 매매가·프리미엄 두 칸은 센텀르엘(분양권)에서 매매를 골랐을 때만 연다.
+     다른 단지에는 '- P' 같은 표시 없이 '매매가' 한 칸만 둔다. */
+  var prem = (CX.id === 'centum') && show.sale && !gen;
+  $('mc-prem-wrap').hidden = !prem;
+  var grid = $('mc-sale-grid');
+  grid.classList.toggle('two', prem);
+  grid.classList.toggle('sub', prem);
+  $('mc-lb-price').textContent = gen ? '금액' : (prem ? '매매' : '매매가');
   $('mc-lb-owner').textContent = rental ? '임대인' : '소유주';
   $('mc-lb-phone').textContent = rental ? '임대인 연락처' : '연락처';
   if (cur && !isNarrow()) requestAnimationFrame(placeCard);
@@ -1622,9 +1706,27 @@ function onEditorChanged() {
 FIELDS.forEach(function (f) {
   mcIn[f].addEventListener('input', onEditorChanged);
 });
-priceInputs().forEach(function (el) {
-  el.addEventListener('input', onEditorChanged);
-});
+/* 금액 칸은 숫자만 받고, 입력하는 즉시 천 단위 콤마를 붙인다 (2026-11-26) */
+function bindAmount(el) {
+  el.addEventListener('input', function () {
+    if (RO) return;
+    var raw = el.value;
+    var pos = (el.selectionStart == null) ? raw.length : el.selectionStart;
+    var before = digitsOnly(raw.slice(0, pos)).length;
+    /* 숫자가 아닌 글자는 바로 지운다 (붙여 넣은 '2억 5,000'은 25000으로) */
+    var v = digitsOnly(raw) ? fmtMan(raw) : '';
+    if (v !== raw) {
+      el.value = v;
+      if (digitsOnly(v)) {
+        var idx = 0, cnt = 0;
+        while (idx < v.length && cnt < before) { if (/[0-9]/.test(v[idx])) cnt++; idx++; }
+        try { el.setSelectionRange(idx, idx); } catch (e) {}
+      }
+    }
+    onEditorChanged();
+  });
+}
+priceInputs().forEach(bindAmount);
 /* 연락처는 숫자만 넣어도 보기 좋게 하이픈을 넣어 준다 (저장 값은 이 모양 그대로) */
 function phoneDigits(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''); }
 function fmtPhone(v) {
@@ -1852,7 +1954,7 @@ function normNote(raw) {
   var ss = cleanStates(raw.ss != null ? raw.ss : (raw.s === 'memo' ? '' : raw.s));
   var ps = {};
   if (raw.ps && typeof raw.ps === 'object') {
-    ['sale', 'jeonse', 'wolse', 'etc'].forEach(function (p) { if (str(raw.ps[p])) ps[p] = str(raw.ps[p]); });
+    PRICE_KEYS.forEach(function (p) { if (str(raw.ps[p])) ps[p] = str(raw.ps[p]); });
   }
   if (!Object.keys(ps).length && str(raw.price)) ps[priceKeyOf(ss.length ? ss[0] : 'none')] = str(raw.price);
   var n = {
@@ -2853,18 +2955,20 @@ function pickleGuide() {
   L.push('');
   L.push('3) 조회');
   L.push('GET ' + sb + '/rest/v1/listings?select=*&user_id=eq.<user_id>&complex=eq.<complex>');
-  L.push('· complex: 센텀르엘=centum, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith');
+  L.push('· complex: 센텀르엘(분양권)=centum, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith');
   L.push('· 예) 제니스 급매 → …&complex=eq.zenith&urgent=eq.true');
   L.push('');
   L.push('4) 등록·수정 (같은 호실은 덮어씁니다)');
   L.push('POST ' + sb + '/rest/v1/listings?on_conflict=user_id,unit_key');
   L.push('headers: Prefer: resolution=merge-duplicates / Content-Type: application/json');
   L.push('body: {"user_id":"<user_id>","unit_key":"201-1-25","complex":"zenith","status":"sale",');
-  L.push('       "prices":{"sale":"15억"},"price":"15억","owner_name":"홍길동","phone":"010-8888-8888",');
-  L.push('       "memo":"[2026.11.25]\n15억 희망","urgent":false,"other_prop":false}');
+  L.push('       "prices":{"sale":"150000","premium":"3000"},"price":"150000","owner_name":"홍길동, 김철수",');
+  L.push('       "phone":"010-8888-8888, 010-7777-7777","memo":"[2026.11.25]\n15억 희망","urgent":false,"other_prop":false}');
   L.push('· status: none|sale|jeonse|wolse|done (대표 하나) / 매매·전세·월세를 같이 올릴 때는 statuses:"sale,jeonse"');
-  L.push('· prices: {"sale":"…","jeonse":"…","wolse":"…","etc":"…"} / price 에 대표 금액을 같이 넣습니다.');
-  L.push('· phone: 소유주(임대인) 연락처. 두 명 이상이면 ", "로 이어 적습니다. (예: 010-1111-1111, 010-2222-2222)');
+  L.push('· prices: {"sale":"…","premium":"…","jeonse":"…","wolse":"3,000 / 120","etc":"…"} — 금액은 모두 **만원 단위 숫자**입니다.');
+  L.push('  예) 9억 6,000만원 → "96000" / 3억 → "30000" / 월세 보증금 3,000·월세 120 → wolse:"3,000 / 120"');
+  L.push('  premium 은 센텀르엘(분양권) 매매의 프리미엄(만원)이며, price 에는 대표 금액(매매가)을 같이 넣습니다.');
+  L.push('· owner_name·phone: 소유주(임대인) 이름과 연락처를 같은 순서로 ", "로 이어 적습니다. (예: 이름 "홍길동, 김철수" / 연락처 "010-1111-1111, 010-2222-2222")');
   L.push('· 급매는 urgent:true, 타부동산은 other_prop:true 입니다.');
   L.push('');
   L.push('5) unit_key 규칙 — {동번호}-{호라인}-{층}');
