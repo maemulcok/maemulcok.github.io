@@ -193,7 +193,7 @@ button{font-family:inherit}
 .bar{position:sticky; top:0; z-index:60; background:#fff; border-bottom:1px solid #dde2e7;
      box-shadow:0 1px 4px rgba(15,23,42,.06)}
 .bar-in{max-width:1660px; margin:0 auto; padding:5px 12px 0}
-.row1{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.row1{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .hdr-acts{display:flex; align-items:center; gap:6px; flex:0 0 auto; margin-left:auto}
 .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; letter-spacing:-.4px;
        line-height:1.25; min-width:0}
@@ -206,7 +206,7 @@ button{font-family:inherit}
 .brand small{display:block; font-weight:500; font-size:10px; color:var(--ink3); letter-spacing:0; margin-top:1px}
 .brand small b{color:#475569; font-weight:800}
 .spacer{flex:1 1 auto}
-.counts{display:flex; gap:5px; flex-wrap:wrap; font-size:10.5px}
+.counts{display:flex; gap:4px; flex-wrap:wrap; font-size:10.5px}
 .chip{display:inline-flex; align-items:center; gap:4px; border:1px solid #e2e6ea; border-radius:999px;
       padding:2px 8px; background:#fff; color:var(--ink2); white-space:nowrap; font-family:inherit;
       font-size:10.5px; font-weight:600; cursor:default}
@@ -877,6 +877,14 @@ html{touch-action:manipulation}
   padding:1px 6px;letter-spacing:-.2px}
 .cxbtn .cx-ar{color:#2f6fb5;font-size:10px}
 .home-btn .hm-ic{color:#5b7590}.cxbtn:hover .cx-bicon{color:#155ec4}
+/* 카테고리 — 홈과 단지 선택 사이의 아파트 · 오피스텔 · 분양권 */
+.cxcat{display:inline-flex;align-items:center;gap:1px;height:28px;padding:1px;border:1px solid #dbe3ed;
+  background:#f4f7fb;border-radius:9px;flex:0 0 auto}
+.cxcat button{height:24px;padding:0 7px;border:0;border-radius:7px;background:transparent;cursor:pointer;
+  font:inherit;font-size:11px;font-weight:800;color:#67788c;white-space:nowrap;letter-spacing:-.5px}
+.cxcat button:hover{background:#e7eefa;color:#123b6d}
+.cxcat button.on{background:#fff;color:#0f4c81;box-shadow:0 1px 3px rgba(16,50,90,.18)}
+.cxcat button:focus-visible{outline:2px solid #8ec0f2;outline-offset:1px}
 .cxmenu{position:absolute;top:36px;left:0;min-width:230px;background:#fff;border:1px solid #d7dee8;border-radius:12px;
   box-shadow:0 14px 36px rgba(15,32,60,.16);padding:6px;display:none;z-index:80}
 .cxmenu.on{display:block}
@@ -910,7 +918,10 @@ html{touch-action:manipulation}
 .home-cxrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:9px}
 .hsum{text-align:left;border:1px solid #e1e8f1;background:#fbfdff;border-radius:12px;padding:11px 12px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:6px}
 .hsum:hover{border-color:#a9c3dd;background:#f5faff}
-.hs-h{display:flex;align-items:baseline;gap:8px}
+.hs-h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.hcat{font-style:normal;font-size:10px;font-weight:800;color:#5b7590;background:#eef3f9;border:1px solid #e1e9f2;
+  border-radius:6px;padding:0 5px;letter-spacing:-.2px}
+.hsum .hcat{align-self:flex-start}
 .hs-h b{font-size:13.5px;color:#152234}
 .hs-h em{font-style:normal;font-size:11px;color:#8b96a6}
 .hs-r{display:flex;flex-wrap:wrap;gap:5px}
@@ -931,27 +942,49 @@ html{touch-action:manipulation}
 .hnote-add{display:flex;gap:7px;margin-top:9px}
 .hnote-add input{flex:1;height:32px;border:1px solid #d7dee8;border-radius:9px;padding:0 10px;font:inherit;font-size:12.5px}
 .home-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:11px}
+.hcatrow{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:4px 1px -2px}
+.hcatrow b{font-size:12.5px;font-weight:800;color:#334963}
+.hcatrow em{font-style:normal;font-size:11px;color:#93a0b1}
 .hcard{position:relative;text-align:left;border:1px solid #e0e7f0;border-radius:14px;padding:14px 15px;cursor:pointer;font:inherit;
   background:linear-gradient(180deg,#ffffff,#f8fbff);display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .hcard:hover{border-color:#9dbde0;box-shadow:0 8px 24px rgba(26,64,110,.10)}
-.hcard.centum::after,.hcard.ipark::after,.hcard.zenith::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
+.hcard.centum::after,.hcard.ipark::after,.hcard.zenith::after,.hcard.adellis::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
 .hcard.centum::after{background:#2f6fb3}
 .hcard.ipark::after{background:#0f7a6c}
 .hcard.zenith::after{background:#2b55a7}
+.hcard.adellis::after{background:#b08947}
 .hc-top{display:flex;align-items:baseline;gap:8px}
 .hc-top b{font-size:15px;color:#132033}
 .hc-top em{font-style:normal;font-size:11.5px;color:#7f8b9c}
+.hc-cat{margin-left:auto;font-style:normal;font-size:10px;font-weight:800;color:#5b7590;background:#f1f5fa;
+  border:1px solid #e4ebf4;border-radius:6px;padding:0 5px;white-space:nowrap}
 .hc-sub{font-size:12px;font-weight:700;color:#3d6fa1}
 .hcard.ipark .hc-sub{color:#0f7a6c}
 .hcard.zenith .hc-sub{color:#2b55a7}
+.hcard.adellis .hc-sub{color:#8a6420}
 .hc-lines{display:flex;flex-direction:column;gap:2px}
 .hc-lines i{font-style:normal;font-size:11.5px;color:#708091}
 .hc-go{margin-top:4px;font-size:12px;font-weight:800;color:#1f5f9e}
 .hcard.ipark .hc-go{color:#0f7a6c}
 .hcard.zenith .hc-go{color:#2b55a7}
+.hcard.adellis .hc-go{color:#8a6420}
+/* 1440 안팍의 PC에서도 한 줄에 들어가게 — 카테고리가 늘어난 만큼 숫자 칩·배율을 조금 조인다 */
+@media (max-width:1560px){
+  .row1{gap:6px}
+  .brand{max-width:242px}
+  .brand small{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cxnav{margin-left:7px;gap:5px}
+  .cxbtn{padding:0 8px}
+  .counts{gap:3px;font-size:10px}
+  .counts .chip{padding:2px 5px;font-size:10px}
+  .zoomgrp #z-100{display:none}
+}
 @media(max-width:900px){
-  .cxnav{margin-left:0;order:9;width:100%;margin-top:6px;gap:6px}
-  .cxpick{flex:1 1 auto;min-width:0}
+  .cxnav{margin-left:0;order:9;width:100%;margin-top:6px;gap:6px;flex-wrap:wrap}
+  .home-btn{order:1;flex:0 0 auto}
+  .cxcat{order:2;flex:1 1 auto;height:32px;justify-content:space-between}
+  .cxcat button{height:26px;flex:1 1 0;text-align:center;font-size:12px}
+  .cxpick{order:3;flex:1 1 100%;min-width:0}
   .cxbtn{height:32px;width:100%;justify-content:center;font-size:13px}
   .home-btn{height:32px;padding:0 12px;font-size:11.5px}
   .home{padding:14px 12px 50px}

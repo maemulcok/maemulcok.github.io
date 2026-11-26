@@ -8,7 +8,7 @@
 <title>매물콕 · 공인중개사 전용 매물장</title>
 <link rel="icon" type="image/png" href="favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
-<link rel="stylesheet" href="app.css?v=24">
+<link rel="stylesheet" href="app.css?v=25">
 </head>
 <body>
 
@@ -206,6 +206,11 @@
           <button type="button" class="chip btn home-btn" id="btn-home" title="홈 대시보드 (전체 단지)">
             <svg class="hm-ic" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>홈
           </button>
+          <div class="cxcat" id="cx-cat" role="group" aria-label="단지 카테고리">
+            <button type="button" data-cat="아파트" aria-pressed="false" title="아파트 단지 — 해운대아이파크 · 해운대두산위브더제니스">아파트</button>
+            <button type="button" data-cat="오피스텔" aria-pressed="false" title="오피스텔 단지 — 더샵해운대아델리스(O/T)">오피스텔</button>
+            <button type="button" data-cat="분양권" aria-pressed="false" title="분양권 단지 — 센텀르엘(분양권)">분양권</button>
+          </div>
           <div class="cxpick" id="cxpick">
             <button type="button" class="cxbtn" id="cx-btn" aria-haspopup="true" title="단지를 바꾸려면 누르세요">
               <svg class="cx-bicon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15"/><path d="M12 10h7a1 1 0 0 1 1 1v10"/><path d="M3 21h18"/><path d="M7 9h1.5M7 13h1.5M7 17h1.5M15.5 14H17M15.5 18H17"/></svg>
@@ -413,7 +418,7 @@
     <button class="help-x" id="help-x" aria-label="닫기" title="닫기 (Esc)">×</button>
   </div>
   <ul>
-    <li><b>단지 세 곳</b> — 위쪽 <b>단지 바꾸기</b>로 <b>센텀르엘(분양권)</b>(101~106동 · 2,070세대) · <b>해운대아이파크</b>(1~3동 · 1,631세대) · <b>해운대두산위브더제니스</b>(101~103동 · 1,788세대)를 오갑니다. <b>홈</b>에서는 세 단지의 만기·내 매물을 한 번에 봅니다.</li>
+    <li><b>단지 네 곳</b> — 위쪽 <b>아파트 · 오피스텔 · 분양권</b>으로 갈래를 고르고 <b>단지 바꾸기</b>로 <b>해운대아이파크</b>(1~3동 · 1,631세대) · <b>해운대두산위브더제니스</b>(101~103동 · 1,788세대) · <b>더샵해운대아델리스(O/T)</b>(101~103동 · 510세대) · <b>센텀르엘(분양권)</b>(101~106동 · 2,070세대)를 오갑니다. <b>홈</b>에서는 네 단지의 만기·내 매물을 한 번에 봅니다.</li>
     <li><b>내 매물만</b> — 로그인한 계정의 기록만 보이고 저장됩니다. 다른 사무소의 매물은 서버에서도 열리지 않습니다.</li>
     <li><b>호실 열기</b> — PC·휴대폰 모두 <b>https://maemulcok.github.io/</b> 한 주소로 접속하고(반응형), 호실을 <b>한 번 누르면</b> 메모장이 뜹니다. 타입·면적(해운대아이파크·두산위브더제니스는 분양가 없이 면적만)을 보면서 <b>금액·소유주·연락처·메모</b>를 적습니다. 센텀르엘(분양권)은 분양가와 <b>계약금(5%)</b>도 함께 보입니다.</li>
     <li><b>금액은 만원 단위</b> — 매매가·전세 보증금·월세·보증금·프리미엄 모두 <b>숫자만</b> 적으면 천 단위 콤마가 붙습니다(예: 96,000 = 9억 6,000만원). 단위는 칸 위의 <b>만원</b> 표시를 보면 됩니다. 옛 방식으로 적힌 <b>2억 5,000</b> 같은 금액도 열면 자동으로 숫자로 바뀝니다. 센텀르엘(분양권)은 매매 때 <b>매매가</b>와 <b>프리미엄</b>을 나눠 적습니다.</li>
@@ -569,6 +574,7 @@
 <script src="board-data.js?v=1"></script>
 <script src="ipark-data.js?v=2"></script>
 <script src="zenith-data.js?v=1"></script>
-<script src="app.js?v=28"></script>
+<script src="adellis-data.js?v=1"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>
