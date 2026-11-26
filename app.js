@@ -12,7 +12,7 @@ var LIVE = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && /^https?:\/\//.test(C
 /* ---------- 단지 목록 (멀티 단지) ----------
    cat: 상단 카테고리(아파트 · 오피스텔 · 분양권)
    py:  타입을 '평형'으로 부르고 표기에 '평'을 붙인다 (아이파크·아델리스)
-   premium: 매매가와 프리미엄을 나눠 적는 단지 (센텀르엘 분양권만) */
+   premium: 매매가와 프리미엄을 나눠 적는 단지 (분양권 — 센텀르엘·써밋리미티드남천·베뉴브해운대) */
 var CATS = ['아파트', '오피스텔', '분양권'];
 var CAT = '';
 var CX_LIST = [];
@@ -50,6 +50,28 @@ var CX_LIST = [];
       price: false, py: true, premium: false, cat: '오피스텔', dongs: [301, 302, 303], skipLines: [4]
     });
   }
+  if (window.SUMMIT_BOARD) {
+    /* 써밋리미티드남천 — 분양권. 동 id 401~405: 센텀르엘(101~106)·아이파크(1~3)·제니스(201~203)·
+       아델리스(301~303)와 unit_key 가 겹치지 않게 하는 내부 번호. 화면에는 101~105동으로 보인다.
+       동마다 라인 수가 달라(101동 6 · 102·103동 4 · 104·105동 5) board.dongs[].cols 를 동별로 읽어
+       그리므로 단지 공통 cols 는 가장 넓은 6으로 둔다. 1~3층은 판매시설·필로티라 BOTTOM=4. */
+    CX_LIST.push({
+      id: 'summit', name: '써밋리미티드남천(분양권)', sub: '101~105동 · 835세대',
+      desc: '남천 써밋', board: window.SUMMIT_BOARD, cols: 6, bottom: 4, fillBlanks: true,
+      price: true, py: false, premium: true, cat: '분양권', dongs: [401, 402, 403, 404, 405]
+    });
+  }
+  if (window.VENUV_BOARD) {
+    /* 베뉴브 해운대 — 분양권. 동 id 501~503: 위 단지들과 unit_key 가 겹치지 않게 하는 내부 번호.
+       1층은 필로티·판매시설·관리사무소라 BOTTOM=2, 20층은 피난안전구역(세대 없음).
+       조합원·보류지 31세대는 분양가 0(미공개)로 들어 있다. */
+    CX_LIST.push({
+      id: 'venuv', name: '베뉴브해운대(분양권)', sub: '101·102·103동 · 660세대',
+      desc: '베뉴브 해운대', board: window.VENUV_BOARD, cols: 5, bottom: 2, fillBlanks: true,
+      price: true, py: false, premium: true, cat: '분양권', dongs: [501, 502, 503],
+      noPrice: '분양가 미공개 (조합원·보류지)'
+    });
+  }
   if (!CX_LIST.length) CX_LIST.push({ id: 'empty', name: '단지', sub: '', board: { units: [], area: {}, meta: {} }, cols: 6, bottom: 5, dongs: [] });
 })();
 var CX = CX_LIST[0];
@@ -76,10 +98,12 @@ function dongLines(n) {
 }
 
 /* ---------- 기본 상수 ---------- */
-var F1_LABEL = {
+/* 1~4층 공용부 이름 — 센텀르엘 기본값. 단지별로 setComplex 에서 바꿔 끼운다. */
+var F1_LABEL_CENTUM = {
   101: '판매시설', 102: '판매시설', 103: '판매시설', 104: '판매시설',
   105: '판매시설, 어린이집', 106: '판매시설, 관리사무소'
 };
+var F1_LABEL = F1_LABEL_CENTUM;
 var CENTUM_TYPE_COLOR = {
   '84':   { bg: '#A4B9DC', bd: '#8697B4', fg: '#1F2937' },
   '104A': { bg: '#F0A6C6', bd: '#C488A2', fg: '#1F2937' },
@@ -122,6 +146,44 @@ var ZENITH_COLOR = {
   '325KS':   { bg: '#5D5DA2', bd: '#4A4A85', fg: '#FFFFFF' }
 };
 var TYPE_COLOR = CENTUM_TYPE_COLOR;
+/* 써밋리미티드남천(분양권) 타입 색상 — 작은 평형(파랑·초록)에서 큰 평형(노랑·주황·분홍)으로,
+   팬트하우스 243B~E는 짙은 색으로 두어 다른 타입과 한눈에 갈린다 */
+var SUMMIT_COLOR = {
+  '84A':  { bg: '#9CC7E8', bd: '#7BA6C7', fg: '#1F2937' },
+  '84B':  { bg: '#A8D8B9', bd: '#86B798', fg: '#1F2937' },
+  '112A': { bg: '#F2E08E', bd: '#CDBB69', fg: '#1F2937' },
+  '112B': { bg: '#F5C58A', bd: '#CFA066', fg: '#1F2937' },
+  '122A': { bg: '#C7B0E3', bd: '#A78FC4', fg: '#1F2937' },
+  '142A': { bg: '#8FBFC4', bd: '#6E9EA3', fg: '#1F2937' },
+  '144A': { bg: '#EFA78C', bd: '#CC876A', fg: '#1F2937' },
+  '177A': { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
+  '182A': { bg: '#A6AEDC', bd: '#858DBE', fg: '#1F2937' },
+  '182B': { bg: '#E790B0', bd: '#C17091', fg: '#1F2937' },
+  '227A': { bg: '#9E8FD0', bd: '#8073B0', fg: '#FFFFFF' },
+  '243B': { bg: '#7C8FC4', bd: '#61729F', fg: '#FFFFFF' },
+  '243C': { bg: '#9C7FB8', bd: '#7E6499', fg: '#FFFFFF' },
+  '243D': { bg: '#C08A6B', bd: '#9E6D51', fg: '#FFFFFF' },
+  '243E': { bg: '#6E9E9E', bd: '#548080', fg: '#FFFFFF' }
+};
+/* 써밋리미티드남천 타입 줄 배지 — 라인 대부분과 다른 타입이 최상층 한두 세대만 차지하는 줄.
+   해당 줄은 대표 타입으로 칠하고, 이 타입을 작은 배지로 붙인다(툴팁에도 같이 남는다). */
+var SUMMIT_LINE_BADGE = {
+  '401-1': '227A', '401-2': '227A',
+  '402-1': '243C', '402-2': '243B',
+  '403-1': '243E', '403-2': '243D'
+};
+/* 베뉴브해운대(분양권) 타입 색상 — 59(파랑) · 84(초록~주황) · 99(라일락)로 평형대를 나눈
+   조합 배치도 색을 따르고, 같은 84 안에서도 A~E가 서로 섮이지 않게 색상환을 넓혔다 */
+var VENUV_COLOR = {
+  '59A': { bg: '#B7D9F2', bd: '#93B7D0', fg: '#1F2937' },
+  '59B': { bg: '#F0C9A8', bd: '#CCA481', fg: '#1F2937' },
+  '84A': { bg: '#A8D8B9', bd: '#86B798', fg: '#1F2937' },
+  '84B': { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
+  '84C': { bg: '#F1E199', bd: '#CDBF74', fg: '#1F2937' },
+  '84D': { bg: '#F5C48F', bd: '#D0A06C', fg: '#1F2937' },
+  '84E': { bg: '#EFA78C', bd: '#CC876A', fg: '#1F2937' },
+  '99':  { bg: '#C3ABE0', bd: '#A38CBE', fg: '#1F2937' }
+};
 var ST_NAME = { none: '미확인', sale: '매매', jeonse: '전세', wolse: '월세', done: '보류·완료' };
 var ST_COLOR = { none: '#ffffff', sale: '#FEF08A', jeonse: '#BAE6FD', wolse: '#E9D5FF', done: '#FCA5A5' };
 var ST_BORDER = { none: '#b9c2cc', sale: '#d9b421', jeonse: '#56b6e0', wolse: '#c084fc', done: '#e88' };
@@ -284,6 +346,11 @@ function wonShort(p) {
   if (eok) return eok + '억';
   return man.toLocaleString('ko-KR') + '만';
 }
+/* 분양가가 공개되지 않은 호실 — 베뉴브해운대의 조합원·보류지 31세대가 분양가 0으로 들어 있다.
+   0을 그대로 찍으면 '0만 원'·'계약금 5% · 0만'이 되므로 메모장·툴팁에서는 안내 문구로 바꾼다. */
+function hasPrice(u) { return !!(u && u.p > 0); }
+function noPriceText() { return CX.noPrice || '분양가 미공개'; }
+function priceLabelOf(u) { return hasPrice(u) ? won(u.p) : noPriceText(); }
 var toastTimer = null;
 function toast(msg) {
   var t = $('toast');
@@ -383,6 +450,13 @@ function dongMetaFor(cx) {
   (cx.board && cx.board.dongs ? cx.board.dongs : []).forEach(function (d) {
     m[d.id] = { top: d.top, cols: d.cols || cx.cols, special: d.special || {}, name: d.name };
   });
+  /* 베뉴브해운대는 101·102·103동 모두 20층이 피난안전구역이라 세대가 없다 */
+  if (cx.id === 'venuv') {
+    [501, 502, 503].forEach(function (d) {
+      if (!m[d]) return;
+      m[d].special = Object.assign({ 20: '20F 피난안전구역' }, m[d].special || {});
+    });
+  }
   return m;
 }
 
@@ -396,7 +470,11 @@ function setComplex(cx) {
   COLS = cx.cols || 6;
   SKIP_LINES = (cx.skipLines || []).slice();
   NCOLS = dongLines(COLS).length;
-  TYPE_COLOR = (cx.id === 'adellis') ? ADELLIS_COLOR : ((cx.id === 'ipark') ? IPARK_COLOR : (cx.id === 'zenith' ? ZENITH_COLOR : CENTUM_TYPE_COLOR));
+  TYPE_COLOR = (cx.id === 'adellis') ? ADELLIS_COLOR
+    : ((cx.id === 'ipark') ? IPARK_COLOR
+    : ((cx.id === 'zenith') ? ZENITH_COLOR
+    : ((cx.id === 'summit') ? SUMMIT_COLOR
+    : ((cx.id === 'venuv') ? VENUV_COLOR : CENTUM_TYPE_COLOR))));
   DONG_META = dongMetaFor(cx);
   TOP = {};
   DONGS.forEach(function (d) { TOP[d] = (DONG_META[d] && DONG_META[d].top) || 67; });
@@ -406,6 +484,12 @@ function setComplex(cx) {
     F1_LABEL = { 201: '로비 · 판매시설', 202: '로비 · 판매시설', 203: '로비 · 판매시설' };
   } else if (cx.id === 'adellis') {
     F1_LABEL = { 301: '근린생활시설 · 로비', 302: '근린생활시설 · 로비', 303: '근린생활시설 · 로비' };
+  } else if (cx.id === 'summit') {
+    F1_LABEL = { 401: '판매시설', 402: '판매시설', 403: '판매시설', 404: '판매시설', 405: '판매시설' };
+  } else if (cx.id === 'venuv') {
+    F1_LABEL = { 501: '판매시설 · 필로티 · 관리사무소', 502: '판매시설 · 필로티 · 관리사무소', 503: '판매시설 · 필로티 · 관리사무소' };
+  } else {
+    F1_LABEL = F1_LABEL_CENTUM;
   }
   buildIndex();
   UNIT_FLOORS = (function () { var m = 0, a = []; DONGS.forEach(function (d) { m = Math.max(m, TOP[d]); }); for (var f = m; f >= BOTTOM; f--) a.push(f); return a; })();
@@ -733,6 +817,11 @@ function buildDong(d) {
   box.className = 'dong';
   box.dataset.d = d;
   box.id = 'd' + d;
+  /* 동마다 라인(호수 열) 수가 다르면 폭도 그만큼 나눠 갖게 한다 —
+     써밋리미티드남천(101동 6 · 102·103동 4 · 104·105동 5)처럼 동마다 라인이 다른 단지에서
+     한 칸 폭이 동별로 달라 보이지 않고 모든 동의 호실 칸이 같은 크기로 선다.
+     라인 수가 같은 단지는 전부 같은 값이라 지금까지 모양 그대로다. */
+  box.style.flexGrow = ncols;
   box.style.setProperty('--dc', dc.c);
   box.style.setProperty('--dc-h', dc.h);
   box.style.setProperty('--dc-tint', dc.t);
@@ -789,6 +878,14 @@ function buildDong(d) {
     html += '<tr><th class="fc">3층</th><td class="fx under" colspan="' + ncols + '">필로티 및 기타공간</td></tr>';
     html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '필로티 및 기타공간') + '</td></tr>';
     html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '필로티 및 기타공간') + '</td></tr>';
+  } else if (CX.id === 'summit') {
+    /* 써밋리미티드남천 저층부 — 1~3층은 판매시설·필로티·부대복리시설, 세대는 4층부터 */
+    html += '<tr><th class="fc">3층</th><td class="fx under" colspan="' + ncols + '">부대복리시설 · 필로티</td></tr>';
+    html += '<tr><th class="fc">2층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '판매시설') + '</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '판매시설') + '</td></tr>';
+  } else if (CX.id === 'venuv') {
+    /* 베뉴브해운대 저층부 — 1층은 판매시설·필로티·관리사무소, 세대는 2층부터 */
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '판매시설 · 필로티') + '</td></tr>';
   } else {
     html += '<tr><th class="fc">4층</th><td class="fx">필로티</td><td class="fx">필로티</td><td class="fx">필로티</td>'
           + '<td class="fx lobby" colspan="2">로비</td><td class="fx">필로티</td></tr>';
@@ -804,13 +901,22 @@ function buildDong(d) {
   for (var lj = 0; lj < ncols; lj++) {
     var j = lines[lj];
     var info = lineTypeInfo(d + '-' + j);
-    var badge = (j === 1 && CX.id === 'centum') ? '<i class="b244">244</i>' : '';
+    /* 타입 줄이 한 칸에 다 들어가지 않는 단지 — 라인 전체와 다른 타입이 한두 세대만 섞인 줄은
+       그 타입을 작은 배지로 붙인다(센텀르엘 101동 등 1호 40F 244).
+       써밋리미티드남천은 '142A/227A'처럼 긴 두 타입이 6칸짜리 동에서 잘리므로
+       101동 1·2호 40F 227A · 102·103동 1·2호 38F 243B~E 를 배지로 뺐다. */
+    var badge = '';
+    if (CX.id === 'centum' && j === 1) badge = '<i class="b244">244</i>';
+    else if (CX.id === 'summit' && SUMMIT_LINE_BADGE[d + '-' + j]) badge = '<i class="b244 bph">' + SUMMIT_LINE_BADGE[d + '-' + j] + '</i>';
     if (!info) {
       html += '<td>' + badge + '</td>';
-    } else if (!info.split) {
-      var c = TYPE_COLOR[info.t] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
-      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + dongLabel(d) + ' ' + j + '호 라인 · ' + info.t + '타입">'
-            + rowTypeLabel(info.t) + badge + '</td>';
+    } else if (!info.split || badge) {
+      /* 배지가 있으면 라인을 대표하는 낮은 타입을 한 색으로 칠하고, 섞인 타입은 배지·툴팁에 남긴다 */
+      var tOne = info.split ? info.low : info.t;
+      var c = TYPE_COLOR[tOne] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
+      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + dongLabel(d) + ' ' + j + '호 라인 · ' + tOne + '타입'
+            + (info.split ? ' · 고층부 ' + info.high + '타입' + (info.more ? ' · 사이 ' + info.more : '') : '') + '">'
+            + rowTypeLabel(tOne) + badge + '</td>';
     } else {
       /* 같은 라인에 평형이 섞여 있으면 대각선으로 나눠 좌=저층 평형, 우=고층 평형 */
       var cl = TYPE_COLOR[info.low] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
@@ -1150,7 +1256,7 @@ function showTip(td, x, y) {
   }).join('');
   tipEl.innerHTML = '<b>' + dongLabel(d) + ' ' + hoNum(f, h) + '호</b>' + (urg ? ' <em class="uu">(급)</em>' : '')
     + (op ? ' <em class="uu">✓타부동산</em>' : '')
-    + ' · ' + tname + (CX.price ? ' · <i>' + won(u.p) + '</i>' : '')
+    + ' · ' + tname + (CX.price ? ' · <i>' + priceLabelOf(u) + '</i>' : '')
     + '<span class="stx">' + sw + (ss.length > 1 ? '<em class="stx-k">' : '') + statesLabel(ss) + (ss.length > 1 ? '</em>' : '') + '</span>'
     + (ft ? '<em class="fl">' + esc(ft) + '</em>' : '')
     + '<em class="ar">공급 <b>' + sup.toFixed(2) + '㎡</b> (' + py(sup) + '평) · 전용 <b>' + jeon.toFixed(2) + '㎡</b> (' + py(jeon) + '평)</em>'
@@ -1464,9 +1570,11 @@ function openCard(td) {
   mcType.style.background = c.bg; mcType.style.borderColor = c.bd; mcType.style.color = c.fg;
   if (CX.price) {
     mcPrice.hidden = false;
-    mcPrice.innerHTML = '<span class="mc-plabel">분양가</span>' + won(u.p);
-    mcGye.hidden = false;
-    mcGye.innerHTML = '계약금 <b>5%</b> · <b>' + wonShort(Math.round(u.p * 0.05)) + '</b>';
+    mcPrice.innerHTML = '<span class="mc-plabel">분양가</span>'
+      + (hasPrice(u) ? won(u.p) : '<span class="nop">' + esc(noPriceText().replace(/^분양가\s*/, '')) + '</span>');
+    mcGye.hidden = !hasPrice(u);
+    if (hasPrice(u)) mcGye.innerHTML = '계약금 <b>5%</b> · <b>' + wonShort(Math.round(u.p * 0.05)) + '</b>';
+    else mcGye.innerHTML = '';
   } else {
     mcPrice.hidden = true;
     mcGye.hidden = true;
@@ -2927,14 +3035,20 @@ function renderHome() {
         var isI = cx.id === 'ipark';
         var isZ = cx.id === 'zenith';
         var isA = cx.id === 'adellis';
+        var isS = cx.id === 'summit';
+        var isV = cx.id === 'venuv';
         var lines = isA
           ? ['101·102·103동 · 3개동 510세대', '58 · 67 · 74A · 74B · 81 · 122 · 126평형', '2006년 9월 준공 · 마린시티 오피스텔']
           : isI
           ? ['1동 66층 · 2동 72층 · 3동 46층', '199개 평면 · 118.45~423.41㎡', '전용률 64~70% (KB 기준)']
           : isZ
           ? ['101동 80층 · 102동 75층 · 103동 70층', '148.11~325.30㎡ · 전용 99.40~222.59㎡', '마린시티 · 2011년 준공']
+          : isS
+          ? ['101동 40층 · 102·103동 38층 · 104·105동 39~40층', '84A~243E · 15타입 835세대', '2029년 7월 입주 · 대우건설']
+          : isV
+          ? ['101·102·103동 48층 · 3개동 660세대', '59A~99 · 8타입 (일반분양 629)', '2029년 5월 입주 · 삼한종합건설']
           : ['101~106동 · 6개동', '84 · 104 · 125 · 154 · 244타입', '분양가·계약금까지 표기'];
-        return '<button type="button" class="hcard' + (isA ? ' adellis' : (isI ? ' ipark' : (isZ ? ' zenith' : ' centum'))) + '" data-cx="' + cx.id + '">'
+        return '<button type="button" class="hcard' + (isA ? ' adellis' : (isI ? ' ipark' : (isZ ? ' zenith' : (isS ? ' summit' : (isV ? ' venuv' : ' centum'))))) + '" data-cx="' + cx.id + '">'
           + '<span class="hc-top"><b>' + esc(cx.name) + '</b><em>' + esc(cx.desc) + '</em><i class="hc-cat">' + esc(cat) + '</i></span>'
           + '<span class="hc-sub">' + esc(cx.sub) + '</span>'
           + '<span class="hc-lines">' + lines.map(function (l) { return '<i>' + esc(l) + '</i>'; }).join('') + '</span>'
@@ -3063,8 +3177,8 @@ function pickleGuide() {
   L.push('');
   L.push('3) 조회');
   L.push('GET ' + sb + '/rest/v1/listings?select=*&user_id=eq.<user_id>&complex=eq.<complex>');
-  L.push('· complex: 센텀르엘(분양권)=centum, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith, 더샵해운대아델리스(O/T)=adellis');
-  L.push('· 상단 카테고리: 아파트 = 해운대아이파크 · 해운대두산위브더제니스 / 오피스텔 = 더샵해운대아델리스(O/T) / 분양권 = 센텀르엘(분양권)');
+  L.push('· complex: 센텀르엘(분양권)=centum, 써밋리미티드남천(분양권)=summit, 베뉴브해운대(분양권)=venuv, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith, 더샵해운대아델리스(O/T)=adellis');
+  L.push('· 상단 카테고리: 아파트 = 해운대아이파크 · 해운대두산위브더제니스 / 오피스텔 = 더샵해운대아델리스(O/T) / 분양권 = 센텀르엘(분양권) · 써밋리미티드남천(분양권) · 베뉴브해운대(분양권)');
   L.push('· 예) 제니스 급매 → …&complex=eq.zenith&urgent=eq.true');
   L.push('');
   L.push('4) 등록·수정 (같은 호실은 덮어씁니다)');
@@ -3076,7 +3190,7 @@ function pickleGuide() {
   L.push('· status: none|sale|jeonse|wolse|done (대표 하나) / 매매·전세·월세를 같이 올릴 때는 statuses:"sale,jeonse"');
   L.push('· prices: {"sale":"…","premium":"…","jeonse":"…","wolse":"3,000 / 120","etc":"…"} — 금액은 모두 **만원 단위 숫자**입니다.');
   L.push('  예) 9억 6,000만원 → "96000" / 3억 → "30000" / 월세 보증금 3,000·월세 120 → wolse:"3,000 / 120"');
-  L.push('  premium 은 센텀르엘(분양권) 매매의 프리미엄(만원)이며, price 에는 대표 금액(매매가)을 같이 넣습니다.');
+  L.push('  premium 은 분양권 단지(센텀르엘·써밋리미티드남천·베뉴브해운대) 매매의 프리미엄(만원)이며, price 에는 대표 금액(매매가)을 같이 넣습니다.');
   L.push('  아파트·오피스텔(아이파크·제니스·아델리스)은 프리미엄 칸이 없고 prices.sale(매매가)만 씁니다.');
   L.push('· owner_name·phone: 소유주(임대인) 이름과 연락처를 같은 순서로 ", "로 이어 적습니다. (예: 이름 "홍길동, 김철수" / 연락처 "010-1111-1111, 010-2222-2222")');
   L.push('· 급매는 urgent:true, 타부동산은 other_prop:true 입니다.');
@@ -3085,7 +3199,13 @@ function pickleGuide() {
   L.push('· 센텀르엘 101동 2501호 → 101-1-25   · 해운대아이파크 1동 2501호 → 1-1-25');
   L.push('· 제니스는 화면의 101~103동이 내부 201~203 → 제니스 101동 2501호 → 201-1-25');
   L.push('· 아델리스도 화면의 101~103동이 내부 301~303 → 아델리스 103동 2505호 → 303-5-25');
+  L.push('· 써밋리미티드남천은 화면의 101~105동이 내부 401~405 → 써밋 101동 2501호 → 401-1-25');
+  L.push('· 베뉴브해운대는 화면의 101~103동이 내부 501~503 → 베뉴브 103동 205호 → 503-2-5');
   L.push('  (2501호 = 1호라인 25층)');
+  L.push('');
+  L.push('[분양가 참고]');
+  L.push('· 배치표 분양가는 입주자모집공고 공급금액(대지비+건축비+부가세)이며, 분양권 매매가·프리미엄과는 별개입니다.');
+  L.push('· 베뉴브해운대 조합원·보류지 31세대(102동·103동 2호 30~40·47·48층, 103동 1호 39·48층, 103동 5호 28~30층)는 분양가가 공개되지 않았습니다.');
   return L.join('\n');
 }
 function copyText(t) {
