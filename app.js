@@ -2053,13 +2053,15 @@ function zoomStep(dir) {
   var n = Math.round(Math.min(200, Math.max(40, cp * (dir > 0 ? 1.1 : 1 / 1.1))));
   VIEW.zoom = n; saveView(); applyZoom();
 }
+/* 배율은 기억하지 않는다.
+   새로고침·재접속·단지 이동 때는 언제나 '맞춤'으로 시작하고,
+   +/−·100%·F·0 키는 지금 보고 있는 화면에서만 잠깐 쓰는 임시 조절이다.
+   예전 버전이 남겨 둔 localStorage(cls.view) 값(예: {"zoom":100})은 지운다. */
 function loadView() {
-  try {
-    var o = JSON.parse(localStorage.getItem('cls.view') || 'null');
-    if (o && (o.zoom === 'fit' || (typeof o.zoom === 'number' && o.zoom >= 40 && o.zoom <= 200))) VIEW.zoom = o.zoom;
-  } catch (e) {}
+  VIEW.zoom = 'fit';
+  try { localStorage.removeItem('cls.view'); } catch (e) {}
 }
-function saveView() { try { localStorage.setItem('cls.view', JSON.stringify({ zoom: VIEW.zoom })); } catch (e) {} }
+function saveView() { /* 이 화면에서만 — 저장하지 않는다 */ }
 function fitBar() { document.documentElement.style.setProperty('--barh', $('bar').offsetHeight + 'px'); }
 $('z-out').onclick = function () { zoomStep(-1); };
 $('z-in').onclick = function () { zoomStep(1); };
@@ -2936,6 +2938,7 @@ function openComplexNow(id, focusKey) {
   setList(false);
   setComplex(cx);
   setLastCx(cx.id);
+  VIEW.zoom = 'fit';   /* 단지를 바꾸면 그 단지에 맞춰 다시 맞춤 */
   $('home').hidden = true;
   $('page').hidden = false;
   if ($('bar')) $('bar').classList.remove('home-mode');
