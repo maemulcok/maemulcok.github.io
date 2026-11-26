@@ -142,10 +142,10 @@ function digitsOnly(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''
 function fmtMan(v) {
   var s = str(v);
   if (!s) return '';
-  var d = digitsOnly(s);
-  if (!d) return s;                 /* 숫자가 전혀 없는 값은 그대로 보여 준다 */
-  d = d.replace(/^0+(?=\d)/, '');
-  return Number(d).toLocaleString('ko-KR');
+  if (!digitsOnly(s)) return s;      /* 숫자가 전혀 없는 값은 그대로 보여 준다 */
+  var n = parseMan(s);
+  if (n === '') return s;
+  return Number(n).toLocaleString('ko-KR');
 }
 /* 옛 금액('30억', '12억 5,000만', '13억7000만', '5,000만', '96000') → 만원 숫자('300000') */
 function parseMan(v) {
@@ -1713,17 +1713,26 @@ function bindAmount(el) {
     var raw = el.value;
     var pos = (el.selectionStart == null) ? raw.length : el.selectionStart;
     var before = digitsOnly(raw.slice(0, pos)).length;
-    /* 숫자가 아닌 글자는 바로 지운다 (붙여 넣은 '2억 5,000'은 25000으로) */
-    var v = digitsOnly(raw) ? fmtMan(raw) : '';
+    /* 숫자가 아닌 글자는 바로 지운다. 타이핑 중에는 콤마만 다시 붙인다. */
+    var d = digitsOnly(raw);
+    var v = d ? Number(d).toLocaleString('ko-KR') : '';
     if (v !== raw) {
       el.value = v;
-      if (digitsOnly(v)) {
-        var idx = 0, cnt = 0;
-        while (idx < v.length && cnt < before) { if (/[0-9]/.test(v[idx])) cnt++; idx++; }
-        try { el.setSelectionRange(idx, idx); } catch (e) {}
-      }
+      var idx = 0, cnt = 0;
+      while (idx < v.length && cnt < before) { if (/[0-9]/.test(v[idx])) cnt++; idx++; }
+      try { el.setSelectionRange(idx, idx); } catch (e) {}
     }
     onEditorChanged();
+  });
+  /* 옛 방식('1억', '2억 5,000만')을 붙여 넣으면 만원 숫자로 바꾼다 */
+  el.addEventListener('paste', function (e) {
+    if (RO) return;
+    var cd = e.clipboardData || window.clipboardData;
+    var t = cd ? String(cd.getData('text') || '') : '';
+    if (!/[억만]/.test(t)) return;
+    e.preventDefault();
+    var n = parseMan(t);
+    if (n !== '') { el.value = Number(n).toLocaleString('ko-KR'); onEditorChanged(); }
   });
 }
 priceInputs().forEach(bindAmount);
