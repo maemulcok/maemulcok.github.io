@@ -971,8 +971,9 @@ html{touch-action:manipulation}
 /* 1440 안팍의 PC에서도 한 줄에 들어가게 — 카테고리가 늘어난 만큼 숫자 칩·배율을 조금 조인다 */
 @media (max-width:1560px){
   .row1{gap:6px}
-  .brand{max-width:242px}
-  .brand small{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand{max-width:248px}
+  .brand small{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand .hd-sub{display:none}
   .cxnav{margin-left:7px;gap:5px}
   .cxbtn{padding:0 8px}
   .counts{gap:3px;font-size:10px}
