@@ -3311,6 +3311,12 @@ if ($('me-mail-go')) $('me-mail-go').onclick = async function () {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { meMsg('me-mail-msg', '이메일 형식을 확인해 주세요.'); $('me-mail').focus(); return; }
   if (isIdEmail(v)) { meMsg('me-mail-msg', '내부 주소는 쓸 수 없습니다. 실제로 쓰는 이메일을 넣어 주세요.'); $('me-mail').focus(); return; }
   if (!LIVE) { meMsg('me-mail-msg', '데모 모드에서는 이메일을 바꿀 수 없습니다.'); return; }
+  /* 예전에 아이디만으로 만든 계정은 인증 서버가 내부 주소(u_...@id.centumleel.local)를
+     '유효하지 않은 주소'로 보고 변경을 거부한다. 서버까지 보내지 않고 운영자에게 요청하도록 안내한다. */
+  if (isIdEmail(S.user && S.user.email)) {
+    meMsg('me-mail-msg', '이 계정은 예전에 아이디만으로 만들어져 등록된 이메일이 없습니다. 등록 이메일은 운영자가 바꿔 드립니다. 아이디 ' + (((S.profile && S.profile.username) || '') || '(상호명)') + ' 와 바꿀 주소를 매물콕 운영자에게 알려 주세요.');
+    return;
+  }
   if (b.disabled) return;
   var t0 = b.textContent;
   b.disabled = true; b.textContent = '변경 중…'; meMsg('me-mail-msg', '');
@@ -3332,7 +3338,12 @@ if ($('me-mail-go')) $('me-mail-go').onclick = async function () {
       await saveProfileEmail(v);
     }
   } catch (e) {
-    meMsg('me-mail-msg', '바꾸지 못했습니다: ' + ((e && e.message) || e));
+    var em = String((e && (e.message || e)) || '');
+    if (/is invalid/i.test(em) && isIdEmail(S.user && S.user.email)) {
+      meMsg('me-mail-msg', '이 계정은 예전에 아이디만으로 만들어져 등록된 이메일이 없습니다. 등록 이메일은 운영자가 바꿔 드립니다. 아이디와 바꿀 주소를 매물콕 운영자에게 알려 주세요.');
+    } else {
+      meMsg('me-mail-msg', '바꾸지 못했습니다: ' + em);
+    }
   } finally {
     b.disabled = false; b.textContent = t0;
   }
