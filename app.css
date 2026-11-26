@@ -898,7 +898,6 @@ html{touch-action:manipulation}
 .cxitem.on{background:#eaf3fb}
 .cxitem b{display:block;font-size:13px;color:#132033}
 .cxitem span{display:block;font-size:11.5px;color:#7b8798;margin-top:2px}
-.cxitem.recent{border-top:1px dashed #e3e9f0;margin-top:4px;padding-top:9px}
 
 .home{background:#f6f8fb;min-height:100vh;padding:22px 18px 60px}
 .home-in{max-width:1080px;margin:0 auto}
@@ -954,13 +953,15 @@ html{touch-action:manipulation}
   background:linear-gradient(180deg,#ffffff,#f8fbff);display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .hcard:hover{border-color:#9dbde0;box-shadow:0 8px 24px rgba(26,64,110,.10)}
 .hcard.centum::after,.hcard.ipark::after,.hcard.zenith::after,.hcard.adellis::after,
-.hcard.summit::after,.hcard.venuv::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
+.hcard.summit::after,.hcard.venuv::after,.hcard.trump_apt::after,.hcard.trump_ot::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
 .hcard.centum::after{background:#2f6fb3}
 .hcard.ipark::after{background:#0f7a6c}
 .hcard.zenith::after{background:#2b55a7}
 .hcard.adellis::after{background:#b08947}
 .hcard.summit::after{background:#3d5a8a}
 .hcard.venuv::after{background:#b06b3f}
+.hcard.trump_apt::after{background:#1f6f7a}
+.hcard.trump_ot::after{background:#8a5a2b}
 .hc-top{display:flex;align-items:baseline;gap:8px}
 .hc-top b{font-size:15px;color:#132033}
 .hc-top em{font-style:normal;font-size:11.5px;color:#7f8b9c}
@@ -972,6 +973,8 @@ html{touch-action:manipulation}
 .hcard.adellis .hc-sub{color:#8a6420}
 .hcard.summit .hc-sub{color:#3d5a8a}
 .hcard.venuv .hc-sub{color:#a2603a}
+.hcard.trump_apt .hc-sub{color:#175c66}
+.hcard.trump_ot .hc-sub{color:#7a4d22}
 .hc-lines{display:flex;flex-direction:column;gap:2px}
 .hc-lines i{font-style:normal;font-size:11.5px;color:#708091}
 .hc-go{margin-top:4px;font-size:12px;font-weight:800;color:#1f5f9e}
@@ -980,6 +983,8 @@ html{touch-action:manipulation}
 .hcard.adellis .hc-go{color:#8a6420}
 .hcard.summit .hc-go{color:#3d5a8a}
 .hcard.venuv .hc-go{color:#a2603a}
+.hcard.trump_apt .hc-go{color:#175c66}
+.hcard.trump_ot .hc-go{color:#7a4d22}
 /* 1440 안팍의 PC에서도 한 줄에 들어가게 — 카테고리가 늘어난 만큼 숫자 칩·배율을 조금 조인다 */
 @media (max-width:1560px){
   .row1{gap:6px}

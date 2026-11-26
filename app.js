@@ -72,6 +72,25 @@ var CX_LIST = [];
       noPrice: '분양가 미공개 (조합원·보류지)'
     });
   }
+  if (window.TRUMP_BOARD) {
+    /* 트럼프월드마린 아파트 — 도면의 101·102동이 현장·네이버 표기로는 A동·B동이다.
+       동 id 601·602: 위 단지들과 unit_key 가 겹치지 않게 하는 내부 번호. 화면에는 A동·B동으로 보인다.
+       1·2층은 필로티 및 기타공간이라 세대는 3층부터(BOTTOM=3). */
+    CX_LIST.push({
+      id: 'trump_apt', name: '트럼프월드마린', sub: 'A·B동 · 232세대',
+      desc: '마린시티 대우트럼프월드마린', board: window.TRUMP_BOARD, cols: 3, bottom: 3, fillBlanks: true,
+      price: false, py: true, premium: false, cat: '아파트', dongs: [601, 602]
+    });
+  }
+  if (window.TRUMP_OT_BOARD) {
+    /* 트럼프월드마린 오피스텔 — 도면의 103·104동이 C동·D동.
+       동 id 701·702: 위 단지들과 unit_key 가 겹치지 않게 하는 내부 번호. 화면에는 C동·D동으로 보인다. */
+    CX_LIST.push({
+      id: 'trump_ot', name: '트럼프월드마린(O/T)', sub: 'C·D동 · 222세대',
+      desc: '마린시티 트럼프월드마린 오피스텔', board: window.TRUMP_OT_BOARD, cols: 4, bottom: 3, fillBlanks: true,
+      price: false, py: true, premium: false, cat: '오피스텔', dongs: [701, 702]
+    });
+  }
   if (!CX_LIST.length) CX_LIST.push({ id: 'empty', name: '단지', sub: '', board: { units: [], area: {}, meta: {} }, cols: 6, bottom: 5, dongs: [] });
 })();
 var CX = CX_LIST[0];
@@ -183,6 +202,20 @@ var VENUV_COLOR = {
   '84D': { bg: '#F5C48F', bd: '#D0A06C', fg: '#1F2937' },
   '84E': { bg: '#EFA78C', bd: '#CC876A', fg: '#1F2937' },
   '99':  { bg: '#C3ABE0', bd: '#A38CBE', fg: '#1F2937' }
+};
+/* 트럼프월드마린 아파트(A·B동) 평형 색 — 59(연파랑) → 64(연두) → 69(노랑) → 79(분홍) → 펜트하우스(짙은 남색) */
+var TRUMP_APT_COLOR = {
+  '59': { bg: '#B7D9F2', bd: '#93B7D0', fg: '#1F2937' },
+  '64': { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
+  '69': { bg: '#F1E199', bd: '#CDBF74', fg: '#1F2937' },
+  '79': { bg: '#F5B8C8', bd: '#D494A5', fg: '#1F2937' },
+  'PH': { bg: '#7C8FC4', bd: '#61729F', fg: '#FFFFFF' }
+};
+/* 트럼프월드마린 오피스텔(C·D동) 평형 색 — 58(연파랑) · 64(연두) · 69(노랑) */
+var TRUMP_OT_COLOR = {
+  '58': { bg: '#B7D9F2', bd: '#93B7D0', fg: '#1F2937' },
+  '64': { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
+  '69': { bg: '#F1E199', bd: '#CDBF74', fg: '#1F2937' }
 };
 var ST_NAME = { none: '미확인', sale: '매매', jeonse: '전세', wolse: '월세', done: '보류·완료' };
 var ST_COLOR = { none: '#ffffff', sale: '#FEF08A', jeonse: '#BAE6FD', wolse: '#E9D5FF', done: '#FCA5A5' };
@@ -324,8 +357,9 @@ var DONG_LABEL = {};
 function dongLabel(d) { return DONG_LABEL[d] || (d + '동'); }
 /* 타입 표기: 센텀르엘은 타입명(84·104A), 아이파크는 평형(36평), 제니스는 타입명(162C) */
 function typeKind() { return CX.py ? '평형' : '타입'; }
-function chipLabel(t) { return CX.py ? t + '평' : t; }
-function typeFull(t) { return CX.py ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입'); }
+/* 펜트하우스(PH)는 '평'을 붙이지 않고 그대로 PH 로 부른다 */
+function chipLabel(t) { return (CX.py && t !== 'PH') ? t + '평' : t; }
+function typeFull(t) { return (CX.py && t !== 'PH') ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입'); }
 /* 타입 줄(칸)에는 좁은 칸에 맞는 짧은 이름: 제니스는 숫자를 빼고 영문 타입만(162C→C) */
 function rowTypeLabel(t) {
   if (CX.id !== 'zenith') return t;
@@ -474,7 +508,9 @@ function setComplex(cx) {
     : ((cx.id === 'ipark') ? IPARK_COLOR
     : ((cx.id === 'zenith') ? ZENITH_COLOR
     : ((cx.id === 'summit') ? SUMMIT_COLOR
-    : ((cx.id === 'venuv') ? VENUV_COLOR : CENTUM_TYPE_COLOR))));
+    : ((cx.id === 'venuv') ? VENUV_COLOR
+    : ((cx.id === 'trump_apt') ? TRUMP_APT_COLOR
+    : ((cx.id === 'trump_ot') ? TRUMP_OT_COLOR : CENTUM_TYPE_COLOR))))));
   DONG_META = dongMetaFor(cx);
   TOP = {};
   DONGS.forEach(function (d) { TOP[d] = (DONG_META[d] && DONG_META[d].top) || 67; });
@@ -488,6 +524,10 @@ function setComplex(cx) {
     F1_LABEL = { 401: '판매시설', 402: '판매시설', 403: '판매시설', 404: '판매시설', 405: '판매시설' };
   } else if (cx.id === 'venuv') {
     F1_LABEL = { 501: '판매시설 · 필로티 · 관리사무소', 502: '판매시설 · 필로티 · 관리사무소', 503: '판매시설 · 필로티 · 관리사무소' };
+  } else if (cx.id === 'trump_apt') {
+    F1_LABEL = { 601: '필로티 및 기타공간', 602: '필로티 및 기타공간' };
+  } else if (cx.id === 'trump_ot') {
+    F1_LABEL = { 701: '필로티 및 기타공간', 702: '필로티 및 기타공간' };
   } else {
     F1_LABEL = F1_LABEL_CENTUM;
   }
@@ -886,6 +926,10 @@ function buildDong(d) {
   } else if (CX.id === 'venuv') {
     /* 베뉴브해운대 저층부 — 1층은 판매시설·필로티·관리사무소, 세대는 2층부터 */
     html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '판매시설 · 필로티') + '</td></tr>';
+  } else if (CX.id === 'trump_apt' || CX.id === 'trump_ot') {
+    /* 트럼프월드마린 — 1·2층은 필로티 및 기타공간, 세대는 3층부터 */
+    html += '<tr><th class="fc">2층</th><td class="fx under" colspan="' + ncols + '">필로티 및 기타공간</td></tr>';
+    html += '<tr><th class="fc">1층</th><td class="fx salefloor" colspan="' + ncols + '">' + (F1_LABEL[d] || '필로티 및 기타공간') + '</td></tr>';
   } else {
     html += '<tr><th class="fc">4층</th><td class="fx">필로티</td><td class="fx">필로티</td><td class="fx">필로티</td>'
           + '<td class="fx lobby" colspan="2">로비</td><td class="fx">필로티</td></tr>';
@@ -953,7 +997,15 @@ function buildBoard() {
   DONGS.forEach(function (d) { boardEl.appendChild(buildDong(d)); });
 
   var types = Array.from(new Set((BOARD.units || []).map(function (u) { return u[3]; })))
-    .sort(function (a, b) { return parseInt(a) - parseInt(b) || a.localeCompare(b); });
+    .sort(function (a, b) {
+      /* 숫자 평형은 작은 것부터, 펜트하우스(PH)처럼 숫자가 아닌 타입은 맨 뒤로 */
+      var na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (isNaN(na) || isNaN(nb)) {
+        if (isNaN(na) && isNaN(nb)) return String(a).localeCompare(String(b));
+        return isNaN(na) ? 1 : -1;
+      }
+      return (na - nb) || String(a).localeCompare(String(b));
+    });
   var tl = $('tlegend');
   tl.innerHTML = '';
   types.forEach(function (t) {
@@ -2813,7 +2865,6 @@ function cxById(id) {
   for (var i = 0; i < CX_LIST.length; i++) if (CX_LIST[i].id === id) return CX_LIST[i];
   return CX_LIST[0];
 }
-function lastCxId() { try { return localStorage.getItem('mc.cx') || ''; } catch (e) { return ''; } }
 function setLastCx(id) { try { localStorage.setItem('mc.cx', id); } catch (e) {} }
 
 /* ---------- 상단 카테고리 (아파트 · 오피스텔 · 분양권) ----------
@@ -2861,17 +2912,7 @@ function renderCxMenu() {
     b.onclick = function (e) { e.stopPropagation(); closeCxMenu(); openComplex(cx.id); };
     menu.appendChild(b);
   });
-  var last = lastCxId();
-  if (last) {
-    var lc = cxById(last);
-    if (show.indexOf(lc) >= 0) {
-      var b2 = document.createElement('button');
-      b2.type = 'button'; b2.className = 'cxitem recent';
-      b2.innerHTML = '<b>최근 단지 · ' + esc(lc.name) + '</b><span>바로 열기</span>';
-      b2.onclick = function (e) { e.stopPropagation(); closeCxMenu(); openComplex(lc.id); };
-      menu.appendChild(b2);
-    }
-  }
+  /* 2026-11-26 사용자 요청: 드롭다운 맨 아래 '최근 단지 · 바로 열기' 줄은 없뱄다 */
   $('cx-cur').textContent = HOME_ON ? (CAT ? CAT + ' 단지' : '단지 선택') : CX.name;
   var hint = $('cx-hint');
   if (hint) hint.textContent = HOME_ON ? '선택' : '변경';
@@ -3040,6 +3081,8 @@ function renderHome() {
         var isA = cx.id === 'adellis';
         var isS = cx.id === 'summit';
         var isV = cx.id === 'venuv';
+        var isTA = cx.id === 'trump_apt';
+        var isTO = cx.id === 'trump_ot';
         var lines = isA
           ? ['101·102·103동 · 3개동 510세대', '58 · 67 · 74A · 74B · 81 · 122 · 126평형', '2006년 9월 준공 · 마린시티 오피스텔']
           : isI
@@ -3050,8 +3093,12 @@ function renderHome() {
           ? ['101동 40층 · 102·103동 38층 · 104·105동 39~40층', '84A~243E · 15타입 835세대', '2029년 7월 입주 · 대우건설']
           : isV
           ? ['101·102·103동 48층 · 3개동 660세대', '59A~99 · 8타입 (일반분양 629)', '2029년 5월 입주 · 삼한종합건설']
+          : isTA
+          ? ['A동·B동 42층 · 232세대', '59 · 64 · 69 · 79평 + 펜트하우스 2', '2007년 4월 준공 · 마린시티 아파트']
+          : isTO
+          ? ['C동·D동 30층 · 222세대', '58 · 64 · 69평 · 3타입', '2007년 4월 준공 · 마린시티 오피스텔']
           : ['101~106동 · 6개동', '84 · 104 · 125 · 154 · 244타입', '분양가·계약금까지 표기'];
-        return '<button type="button" class="hcard' + (isA ? ' adellis' : (isI ? ' ipark' : (isZ ? ' zenith' : (isS ? ' summit' : (isV ? ' venuv' : ' centum'))))) + '" data-cx="' + cx.id + '">'
+        return '<button type="button" class="hcard' + (isA ? ' adellis' : (isI ? ' ipark' : (isZ ? ' zenith' : (isS ? ' summit' : (isV ? ' venuv' : (isTA ? ' trump_apt' : (isTO ? ' trump_ot' : ' centum'))))))) + '" data-cx="' + cx.id + '">'
           + '<span class="hc-top"><b>' + esc(cx.name) + '</b><em>' + esc(cx.desc) + '</em><i class="hc-cat">' + esc(cat) + '</i></span>'
           + '<span class="hc-sub">' + esc(cx.sub) + '</span>'
           + '<span class="hc-lines">' + lines.map(function (l) { return '<i>' + esc(l) + '</i>'; }).join('') + '</span>'
@@ -3180,8 +3227,8 @@ function pickleGuide() {
   L.push('');
   L.push('3) 조회');
   L.push('GET ' + sb + '/rest/v1/listings?select=*&user_id=eq.<user_id>&complex=eq.<complex>');
-  L.push('· complex: 센텀르엘(분양권)=centum, 써밋리미티드남천(분양권)=summit, 베뉴브해운대(분양권)=venuv, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith, 더샵해운대아델리스(O/T)=adellis');
-  L.push('· 상단 카테고리: 아파트 = 해운대아이파크 · 해운대두산위브더제니스 / 오피스텔 = 더샵해운대아델리스(O/T) / 분양권 = 센텀르엘(분양권) · 써밋리미티드남천(분양권) · 베뉴브해운대(분양권)');
+  L.push('· complex: 센텀르엘(분양권)=centum, 써밋리미티드남천(분양권)=summit, 베뉴브해운대(분양권)=venuv, 해운대아이파크=ipark, 해운대두산위브더제니스=zenith, 더샵해운대아델리스(O/T)=adellis, 트럼프월드마린(A·B동 아파트)=trump_apt, 트럼프월드마린(O/T)(C·D동)=trump_ot');
+  L.push('· 상단 카테고리: 아파트 = 해운대아이파크 · 해운대두산위브더제니스 · 트럼프월드마린 / 오피스텔 = 더샵해운대아델리스(O/T) · 트럼프월드마린(O/T) / 분양권 = 센텀르엘(분양권) · 써밋리미티드남천(분양권) · 베뉴브해운대(분양권)');
   L.push('· 예) 제니스 급매 → …&complex=eq.zenith&urgent=eq.true');
   L.push('');
   L.push('4) 등록·수정 (같은 호실은 덮어씁니다)');
@@ -3194,7 +3241,7 @@ function pickleGuide() {
   L.push('· prices: {"sale":"…","premium":"…","jeonse":"…","wolse":"3,000 / 120","etc":"…"} — 금액은 모두 **만원 단위 숫자**입니다.');
   L.push('  예) 9억 6,000만원 → "96000" / 3억 → "30000" / 월세 보증금 3,000·월세 120 → wolse:"3,000 / 120"');
   L.push('  premium 은 분양권 단지(센텀르엘·써밋리미티드남천·베뉴브해운대) 매매의 프리미엄(만원)이며, price 에는 대표 금액(매매가)을 같이 넣습니다.');
-  L.push('  아파트·오피스텔(아이파크·제니스·아델리스)은 프리미엄 칸이 없고 prices.sale(매매가)만 씁니다.');
+  L.push('  아파트·오피스텔(아이파크·제니스·아델리스·트럼프월드마린)은 프리미엄 칸이 없고 prices.sale(매매가)만 씁니다.');
   L.push('· owner_name·phone: 소유주(임대인) 이름과 연락처를 같은 순서로 ", "로 이어 적습니다. (예: 이름 "홍길동, 김철수" / 연락처 "010-1111-1111, 010-2222-2222")');
   L.push('· 급매는 urgent:true, 타부동산은 other_prop:true 입니다.');
   L.push('');
