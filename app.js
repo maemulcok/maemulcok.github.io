@@ -223,14 +223,13 @@ var TRUMP_APT_COLOR = {
   '79': { bg: '#F5B8C8', bd: '#D494A5', fg: '#1F2937' },
   'PH': { bg: '#7C8FC4', bd: '#61729F', fg: '#FFFFFF' }
 };
-/* 우신골든스위트(O/T) 타입 색 — 287(연두) · 293(연파랑) · 346A(노랑) · 388B(분홍) · 389C(라벤더).
-   타입 이름은 네이버·KB 표기대로 계약면적(287.97·293.11·346.2A·388.71B·389.56C)을 줄인 것이다. */
+/* 우신골든스위트(O/T) 평형 색 — 66평(연두) · 70평(노랑) · 80평(분홍).
+   2026-11-27 사용자 요청: 계약면적 5종(287.97·293.11·346.2A·388.71B·389.56C)을 화면에서는
+   작은 평수 순서대로 66평·70평·80평 3종으로 묶는다. 호실별 계약/전용㎡는 그대로 둔다. */
 var WOOSHIN_COLOR = {
-  '287':  { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
-  '293':  { bg: '#B7D9F2', bd: '#93B7D0', fg: '#1F2937' },
-  '346A': { bg: '#F1E199', bd: '#CDBF74', fg: '#1F2937' },
-  '388B': { bg: '#F5B8C8', bd: '#D494A5', fg: '#1F2937' },
-  '389C': { bg: '#C3ABE0', bd: '#A38CBE', fg: '#1F2937' }
+  '66평': { bg: '#CBE59E', bd: '#A9C37C', fg: '#1F2937' },
+  '70평': { bg: '#F1E199', bd: '#CDBF74', fg: '#1F2937' },
+  '80평': { bg: '#F5B8C8', bd: '#D494A5', fg: '#1F2937' }
 };
 /* 트럼프월드마린 오피스텔(C·D동) 평형 색 — 58(연파랑) · 64(연두) · 69(노랑) */
 var TRUMP_OT_COLOR = {
@@ -380,7 +379,10 @@ function dongLabel(d) { return DONG_LABEL[d] || (d + '동'); }
 function typeKind() { return CX.py ? '평형' : '타입'; }
 /* 펜트하우스(PH)는 '평'을 붙이지 않고 그대로 PH 로 부른다 */
 function chipLabel(t) { return (CX.py && t !== 'PH') ? t + '평' : t; }
-function typeFull(t) { return (CX.py && t !== 'PH') ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입'); }
+/* 타입 이름에 이미 '평'이 붙은 단지(우신골든스위트 '66평')는 그대로 쓴다 */
+function typeFull(t) { return /평$/.test(t) ? t : ((CX.py && t !== 'PH') ? t + '평형' : (CX.id === 'zenith' ? t + ' 타입' : t + '타입')); }
+/* 툴팁·읽기 이름에 붙는 '타입' — '66평 타입'처럼 띄어 쓴다 */
+function typeWord(t) { return /평$/.test(t) ? t + ' 타입' : t + '타입'; }
 /* 타입 줄(칸)에는 좁은 칸에 맞는 짧은 이름: 제니스는 숫자를 빼고 영문 타입만(162C→C) */
 function rowTypeLabel(t) {
   if (CX.id !== 'zenith') return t;
@@ -418,7 +420,7 @@ function toast(msg) {
 }
 
 /* ---------- 배치표 인덱스 ---------- */
-var IDX = new Map(), LINE_TYPE = {}, LINE_TY = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = {};
+var IDX = new Map(), RIDX = new Map(), LINE_TYPE = {}, LINE_TY = {}, DONG_CNT = {}, LINE_CNT = {}, AREA = {};
 
 /* 해운대아이파크 타입 색상 (평형대별) */
 var IPARK_COLOR = {
@@ -565,15 +567,21 @@ function setComplex(cx) {
 }
 
 function buildIndex() {
-  IDX = new Map(); LINE_TYPE = {}; LINE_TY = {}; DONG_CNT = {}; LINE_CNT = {};
+  IDX = new Map(); RIDX = new Map(); LINE_TYPE = {}; LINE_TY = {}; DONG_CNT = {}; LINE_CNT = {};
   (BOARD.units || []).forEach(function (u) {
-    IDX.set(K(u[0], u[1], u[2]), { d: u[0], h: u[1], f: u[2], t: u[3], p: u[4], s: u[5], j: u[6] });
+    var it = { d: u[0], h: u[1], f: u[2], t: u[3], p: u[4], s: u[5], j: u[6] };
+    IDX.set(K(u[0], u[1], u[2]), it);
+    /* 화면에 그리는 열 — 대부분 호수 그대로지만, 우신골든스위트 동관동 3803호처럼
+       세로로 비는 호수 열을 없애고 옆 열에 그리는 호실은 units 8번째 값(그리는 열)을 쓴다.
+       unit_key 는 실제 호수(K(u[0],u[1],u[2])) 그대로다. */
+    var rc = (u[7] != null) ? u[7] : u[1];
+    RIDX.set(K(u[0], rc, u[2]), it);
     var meta = DONG_META[u[0]];
     if (meta && meta.special && meta.special[String(u[2])]) return;   /* 특수층 호실은 세대수에서 제외 */
     DONG_CNT[u[0]] = (DONG_CNT[u[0]] || 0) + 1;
-    LINE_CNT[u[0] + '-' + u[1]] = (LINE_CNT[u[0] + '-' + u[1]] || 0) + 1;
+    LINE_CNT[u[0] + '-' + rc] = (LINE_CNT[u[0] + '-' + rc] || 0) + 1;
     if (u[3] !== '244') {
-      var lk = u[0] + '-' + u[1];
+      var lk = u[0] + '-' + rc;
       LINE_TYPE[lk + '#n'] = LINE_TYPE[lk + '#n'] || {};
       LINE_TYPE[lk + '#n'][u[3]] = (LINE_TYPE[lk + '#n'][u[3]] || 0) + 1;
       /* 라인 안에서 층에 따라 평형이 바뀌는 곳(해운대아이파크 고층 등)을 잡기 위해
@@ -917,15 +925,16 @@ function buildDong(d) {
     var tr = '<tr><th class="fc">' + f + '층</th>';
     for (var li = 0; li < ncols; li++) {
       var h = lines[li];
-      var u = IDX.get(K(d, h, f));
+      var u = RIDX.get(K(d, h, f));
       if (u) {
         var span = (u.t === '244') ? 2 : 1;
-        var ho = hoNum(f, h);
+        var uh = u.h;                       /* 실제 호수 — 그리는 열과 다를 수 있다(3803호 → 6호 열) */
+        var ho = hoNum(f, uh);
         /* 호실 칸은 미등록이면 순백(#ffffff). 타입·평형 색은 각 동 맨 아래 '타입' 행에만 넣는다.
            상태 색(매매·전세·월세·보류)과 급매 테두리는 paintCell 이 붙이는 클래스로만 칠한다. */
-        tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, h, f) + '" data-d="' + d
-            + '" data-ho="' + h + '" data-f="' + f + '" data-t="' + u.t + '"'
-            + ' aria-label="' + dongLabel(d) + ' ' + ho + '호 ' + u.t + '타입"><span class="num">' + ho + '</span></td>';
+        tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, uh, f) + '" data-d="' + d
+            + '" data-ho="' + uh + '" data-f="' + f + '" data-t="' + u.t + '"'
+            + ' aria-label="' + dongLabel(d) + ' ' + ho + '호 ' + typeWord(u.t) + '"><span class="num">' + ho + '</span></td>';
         if (span === 2) li++;
       } else {
         tr += '<td class="fx"></td>';
@@ -991,8 +1000,8 @@ function buildDong(d) {
       /* 배지가 있으면 라인을 대표하는 낮은 타입을 한 색으로 칠하고, 섞인 타입은 배지·툴팁에 남긴다 */
       var tOne = info.split ? info.low : info.t;
       var c = TYPE_COLOR[tOne] || { bg: '#f1f5f9', bd: '#d7dde3', fg: '#334155' };
-      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + dongLabel(d) + ' ' + j + '호 라인 · ' + tOne + '타입'
-            + (info.split ? ' · 고층부 ' + info.high + '타입' + (info.more ? ' · 사이 ' + info.more : '') : '') + '">'
+      html += '<td style="background:' + c.bg + ';border-color:' + c.bd + ';color:' + c.fg + '" title="' + dongLabel(d) + ' ' + j + '호 라인 · ' + typeWord(tOne)
+            + (info.split ? ' · 고층부 ' + typeWord(info.high) + (info.more ? ' · 사이 ' + info.more : '') : '') + '">'
             + rowTypeLabel(tOne) + badge + '</td>';
     } else {
       /* 같은 라인에 평형이 섞여 있으면 대각선으로 나눠 좌=저층 평형, 우=고층 평형 */
@@ -3132,7 +3141,7 @@ function renderHome() {
           : isTO
           ? ['C동·D동 30층 · 222세대', '58 · 64 · 69평 · 3타입', '2007년 4월 준공 · 마린시티 오피스텔']
           : isW
-          ? ['서관동·동관동 37층 · 202세대', '287 · 293 · 346A · 388B · 389C (87~118평)', '2005년 12월 준공 · 마린시티 주거용 오피스텔']
+          ? ['서관동·동관동 37층 · 202세대', '66평 · 70평 · 80평 · 3타입', '2005년 12월 준공 · 마린시티 주거용 오피스텔']
           : ['101~106동 · 6개동', '84 · 104 · 125 · 154 · 244타입', '분양가·계약금까지 표기'];
         return '<button type="button" class="hcard' + (isA ? ' adellis' : (isI ? ' ipark' : (isZ ? ' zenith' : (isS ? ' summit' : (isV ? ' venuv' : (isTA ? ' trump_apt' : (isTO ? ' trump_ot' : (isW ? ' wooshin' : ' centum')))))))) + '" data-cx="' + cx.id + '">'
           + '<span class="hc-top"><b>' + esc(cx.name) + '</b><em>' + esc(cx.desc) + '</em><i class="hc-cat">' + esc(cat) + '</i></span>'
