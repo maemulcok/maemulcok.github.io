@@ -953,7 +953,7 @@ html{touch-action:manipulation}
   background:linear-gradient(180deg,#ffffff,#f8fbff);display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .hcard:hover{border-color:#9dbde0;box-shadow:0 8px 24px rgba(26,64,110,.10)}
 .hcard.centum::after,.hcard.ipark::after,.hcard.zenith::after,.hcard.adellis::after,
-.hcard.summit::after,.hcard.venuv::after,.hcard.trump_apt::after,.hcard.trump_ot::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
+.hcard.summit::after,.hcard.venuv::after,.hcard.trump_apt::after,.hcard.trump_ot::after,.hcard.wooshin::after{content:'';position:absolute;right:-26px;top:-26px;width:92px;height:92px;border-radius:50%;opacity:.16}
 .hcard.centum::after{background:#2f6fb3}
 .hcard.ipark::after{background:#0f7a6c}
 .hcard.zenith::after{background:#2b55a7}
@@ -962,6 +962,7 @@ html{touch-action:manipulation}
 .hcard.venuv::after{background:#b06b3f}
 .hcard.trump_apt::after{background:#1f6f7a}
 .hcard.trump_ot::after{background:#8a5a2b}
+.hcard.wooshin::after{background:#256b6b}
 .hc-top{display:flex;align-items:baseline;gap:8px}
 .hc-top b{font-size:15px;color:#132033}
 .hc-top em{font-style:normal;font-size:11.5px;color:#7f8b9c}
@@ -975,6 +976,7 @@ html{touch-action:manipulation}
 .hcard.venuv .hc-sub{color:#a2603a}
 .hcard.trump_apt .hc-sub{color:#175c66}
 .hcard.trump_ot .hc-sub{color:#7a4d22}
+.hcard.wooshin .hc-sub{color:#1f5f5f}
 .hc-lines{display:flex;flex-direction:column;gap:2px}
 .hc-lines i{font-style:normal;font-size:11.5px;color:#708091}
 .hc-go{margin-top:4px;font-size:12px;font-weight:800;color:#1f5f9e}
@@ -985,6 +987,7 @@ html{touch-action:manipulation}
 .hcard.venuv .hc-go{color:#a2603a}
 .hcard.trump_apt .hc-go{color:#175c66}
 .hcard.trump_ot .hc-go{color:#7a4d22}
+.hcard.wooshin .hc-go{color:#1f5f5f}
 /* 1440 안팍의 PC에서도 한 줄에 들어가게 — 카테고리가 늘어난 만큼 숫자 칩·배율을 조금 조인다 */
 @media (max-width:1560px){
   .row1{gap:6px}
