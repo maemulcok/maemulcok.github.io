@@ -569,19 +569,20 @@ function setComplex(cx) {
 function buildIndex() {
   IDX = new Map(); RIDX = new Map(); LINE_TYPE = {}; LINE_TY = {}; DONG_CNT = {}; LINE_CNT = {};
   (BOARD.units || []).forEach(function (u) {
-    var it = { d: u[0], h: u[1], f: u[2], t: u[3], p: u[4], s: u[5], j: u[6] };
+    var it = { d: u[0], h: u[1], f: u[2], t: u[3], p: u[4], s: u[5], j: u[6], sub: u[9] || '' };
     IDX.set(K(u[0], u[1], u[2]), it);
-    /* 화면에 그리는 열 — 대부분 호수 그대로지만, 우신골든스위트 동관동 3803호처럼
-       세로로 비는 호수 열을 없애고 옆 열에 그리는 호실은 units 8번째 값(그리는 열)을 쓴다.
-       unit_key 는 실제 호수(K(u[0],u[1],u[2])) 그대로다. */
+    /* 화면에 그리는 자리 — 대부분 소속 동·호수 그대로지만, 우신골든스위트 동관동 3803호처럼
+       다른 동·다른 열로 옮겨 그리는 호실은 units 8·9번째 값(그리는 열·동)을 쓴다.
+       unit_key 는 실제 동·호수(K(u[0],u[1],u[2])) 그대로다. */
     var rc = (u[7] != null) ? u[7] : u[1];
-    RIDX.set(K(u[0], rc, u[2]), it);
+    var rd = (u[8] != null) ? u[8] : u[0];
+    RIDX.set(K(rd, rc, u[2]), it);
     var meta = DONG_META[u[0]];
     if (meta && meta.special && meta.special[String(u[2])]) return;   /* 특수층 호실은 세대수에서 제외 */
     DONG_CNT[u[0]] = (DONG_CNT[u[0]] || 0) + 1;
-    LINE_CNT[u[0] + '-' + rc] = (LINE_CNT[u[0] + '-' + rc] || 0) + 1;
+    LINE_CNT[rd + '-' + rc] = (LINE_CNT[rd + '-' + rc] || 0) + 1;
     if (u[3] !== '244') {
-      var lk = u[0] + '-' + rc;
+      var lk = rd + '-' + rc;
       LINE_TYPE[lk + '#n'] = LINE_TYPE[lk + '#n'] || {};
       LINE_TYPE[lk + '#n'][u[3]] = (LINE_TYPE[lk + '#n'][u[3]] || 0) + 1;
       /* 라인 안에서 층에 따라 평형이 바뀌는 곳(해운대아이파크 고층 등)을 잡기 위해
@@ -928,13 +929,14 @@ function buildDong(d) {
       var u = RIDX.get(K(d, h, f));
       if (u) {
         var span = (u.t === '244') ? 2 : 1;
-        var uh = u.h;                       /* 실제 호수 — 그리는 열과 다를 수 있다(3803호 → 6호 열) */
+        var uh = u.h, ud = u.d;             /* 실제 소속 동·호수 — 그리는 자리와 다를 수 있다(동관 3803호 → 서관 3호 열) */
         var ho = hoNum(f, uh);
+        var sub = u.sub ? '<i class="pn">' + esc(u.sub) + '</i>' : '';
         /* 호실 칸은 미등록이면 순백(#ffffff). 타입·평형 색은 각 동 맨 아래 '타입' 행에만 넣는다.
            상태 색(매매·전세·월세·보류)과 급매 테두리는 paintCell 이 붙이는 클래스로만 칠한다. */
-        tr += '<td class="c" colspan="' + span + '" data-k="' + K(d, uh, f) + '" data-d="' + d
+        tr += '<td class="c' + (sub ? ' ptsub' : '') + '" colspan="' + span + '" data-k="' + K(ud, uh, f) + '" data-d="' + ud
             + '" data-ho="' + uh + '" data-f="' + f + '" data-t="' + u.t + '"'
-            + ' aria-label="' + dongLabel(d) + ' ' + ho + '호 ' + typeWord(u.t) + '"><span class="num">' + ho + '</span></td>';
+            + ' aria-label="' + dongLabel(ud) + ' ' + ho + '호 ' + typeWord(u.t) + '"><span class="num">' + ho + sub + '</span></td>';
         if (span === 2) li++;
       } else {
         tr += '<td class="fx"></td>';

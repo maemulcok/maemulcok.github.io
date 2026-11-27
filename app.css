@@ -327,6 +327,8 @@ td.c.hit{box-shadow:inset 0 0 0 2px #f59e0b; z-index:2}
 td.c.dim{opacity:.1}
 td.c span.num{pointer-events:none}
 td.c .urg{font-style:normal; font-size:.82em; font-weight:700; letter-spacing:0; color:#DC2626; margin-left:1px}
+td.c .pn{font-style:normal; font-size:.62em; font-weight:700; letter-spacing:-.04em; color:#475569; margin-left:1px}
+td.c.ptsub{letter-spacing:-.7px}
 td.c.s-done .urg{color:#fff; background:#b91c1c; border-radius:2px; padding:0 1px}
 td.blank{border:0; background:transparent}
 th.fc.bz{border:0; border-bottom:1px solid transparent; background:transparent; color:transparent}
